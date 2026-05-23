@@ -1,0 +1,53 @@
+# MDF — Markdown First
+
+> A proposal for a web content architecture where markdown is the source of truth, agents are first-class citizens, and access policy is expressed through price.
+
+**Status:** Draft · Seeking community feedback  
+**Authors:** Gary Walker / [BitCryptic™](https://bitcryptic.com) · Graham Hall / Slepner
+
+---
+
+## The problem in one paragraph
+
+AI agents are now among the most frequent consumers of web content, yet the web serves them HTML — a format built for human eyes. Agents must strip navigation, ads, scripts, and layout markup to reach the content underneath, wasting 5–10× the tokens actually needed. MDF proposes a simple, open architecture to fix this: markdown as the canonical source, HTTP content negotiation for delivery, and an optional payment layer that doubles as access policy.
+
+## What MDF proposes
+
+- **Markdown-first authoring** — markdown is the source of truth; HTML is rendered from it for browsers, not the other way around
+- **Native agent serving** — `Accept: text/markdown` returns clean markdown at the same URL, no conversion middleware required
+- **Structured discovery** — `/mdf.json` advertises capabilities, pricing, and content signals in a machine-readable format that agents can query before fetching
+- **Price as access policy** — a single price field unifies open access, micropayment, and private/authenticated access into one continuous spectrum, using the x402 payment standard
+
+## How the price spectrum works
+
+| Price | What it means |
+|-------|--------------|
+| `$0.00` | Open — serve immediately, no payment required |
+| `$0.0001` | Micropayment — small per-fetch fee offsets creator costs; cheaper for AI operators than fetching and parsing HTML |
+| `$1.00+` | Premium — meaningful payment for gated content |
+| `$100.00+` | Private — payment triggers an auth token issuance rather than immediate delivery |
+
+## Read the full proposal
+
+→ [CONCEPT.md](./CONCEPT.md)
+
+The concept document covers the full architecture, existing partial solutions, open questions, and the reference implementation plan.
+
+## Current status
+
+- [x] Concept document published
+- [ ] `mdf.schema.json` — JSON Schema for `/mdf.json`
+- [ ] Reference implementation — self-hostable Docker image (`mdf-server`)
+- [ ] Demo site — live end-to-end demonstration of all three payment tiers
+
+## Get involved
+
+This is an early-stage community proposal. The open questions section of the concept document is a good starting point for discussion.
+
+- **Discuss:** Open an issue
+- **Implement:** Build an MDF-compatible server or client and link it here
+- **Challenge:** If you think this is wrong, redundant, or misses something — say so
+
+## License
+
+MIT
