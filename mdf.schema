@@ -197,6 +197,47 @@
       }
     },
 
+    "feed": {
+      "type": "object",
+      "description": "Content freshness and agent subscription configuration. MDF extends standard RSS/Atom feeds with change-type metadata and optionally supports WebSub push notifications.",
+      "additionalProperties": false,
+      "properties": {
+
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the site's RSS 2.0 or Atom 1.0 feed, extended with MDF change metadata.",
+          "examples": ["https://example.com/feed.xml", "https://example.com/atom.xml"]
+        },
+
+        "format": {
+          "type": "string",
+          "description": "Feed format.",
+          "enum": ["rss2", "atom"],
+          "default": "atom"
+        },
+
+        "websub_hub": {
+          "type": "string",
+          "format": "uri",
+          "description": "WebSub hub URL for push notifications. Agents that support WebSub can subscribe here to receive change notifications without polling. Falls back to feed polling if absent.",
+          "examples": ["https://pubsubhubbub.appspot.com/", "https://example.com/websub"]
+        },
+
+        "change_types": {
+          "type": "array",
+          "description": "List of mdf:change_type values this feed emits. Agents can use this to filter subscription interest.",
+          "items": {
+            "type": "string",
+            "enum": ["content_update", "new_page", "retraction", "pricing_change", "signal_change", "mdf_capability"]
+          },
+          "uniqueItems": true,
+          "examples": [["content_update", "new_page", "pricing_change"]]
+        }
+
+      }
+    },
+
     "llms_txt": {
       "type": "string",
       "format": "uri",
@@ -281,6 +322,12 @@
         "math": false
       },
       "llms_txt": "https://example.com/llms.txt",
+      "feed": {
+        "url": "https://example.com/feed.xml",
+        "format": "atom",
+        "websub_hub": "https://pubsubhubbub.appspot.com/",
+        "change_types": ["content_update", "new_page", "pricing_change", "mdf_capability"]
+      },
       "contact": "admin@example.com"
     }
   ]
