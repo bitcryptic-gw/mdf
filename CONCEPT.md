@@ -33,7 +33,13 @@ Several initiatives have addressed pieces of this problem, but none provide a co
 
 **x402** is an emerging HTTP payment protocol using the long-reserved `402 Payment Required` status code, designed for machine-to-machine micropayments, particularly over crypto rails. It is not web-content-specific but provides exactly the payment primitive MDF needs.
 
-**The gap:** none of these address markdown-as-source-of-truth, creator compensation, or unified access policy. MDF proposes to connect them.
+**RSS/Atom** solved the content freshness problem for human subscribers in the early 2000s — rather than polling pages repeatedly, subscribers watch a feed and receive notifications when content changes. The same problem exists for agents, and the same solution applies. RSS/Atom feeds are near-universally supported and already present on most content sites.
+
+**WebSub** (W3C, formerly PubSubHubbub) is the push layer that RSS never had built in. Publishers notify a hub when content changes; subscribers receive pushed updates rather than polling. It is already supported by WordPress, Blogger, and major feed readers, making it a natural push transport for MDF-aware agents.
+
+**The gap:** none of these address markdown-as-source-of-truth, creator compensation, unified access policy, or agent-semantic change notifications. MDF proposes to connect them.
+
+A core design principle of MDF is to act as a **connective layer between existing standards** rather than replacing any of them. Implementors should not need to abandon existing infrastructure — MDF provides the architecture that links these pieces into a coherent whole.
 
 ---
 
@@ -150,6 +156,43 @@ MDF adopts and extends the Content-Signal pattern (as introduced by Cloudflare) 
 
 These are advisory signals. MDF does not enforce them technically but provides a standard vocabulary for expressing them, enabling compliant agent operators to honour them.
 
+### Content Freshness and Agent Subscriptions
+
+Polling is as wasteful for agents as it was for RSS readers in 2003. MDF addresses content freshness at two levels.
+
+**Per-request freshness** uses standard HTTP mechanisms: `ETag` and `Last-Modified` response headers, honoured by compliant agents to avoid re-fetching unchanged content. No MDF-specific extension is required here — existing HTTP caching semantics apply directly.
+
+**Site-level change subscriptions** borrow from RSS/Atom and WebSub. MDF-compliant sites expose a feed (RSS 2.0 or Atom 1.0) at a URL advertised in `/mdf.json`. Agents that support feed polling can watch for changes without fetching every page repeatedly.
+
+MDF extends the standard feed format with an optional `<mdf:change>` namespace providing agent-semantic change metadata per entry:
+
+```xml
+<item>
+  <title>Pricing updated for /premium section</title>
+  <link>https://example.com/premium/overview</link>
+  <pubDate>Sat, 23 May 2026 10:00:00 +0000</pubDate>
+  <mdf:change_type>pricing_change</mdf:change_type>
+  <mdf:path>/premium/**</mdf:path>
+  <mdf:content_signals_changed>false</mdf:content_signals_changed>
+  <mdf:token_delta>0</mdf:token_delta>
+</item>
+```
+
+Defined `change_type` values:
+
+| Value | Meaning |
+|-------|---------|
+| `content_update` | Existing page content has changed |
+| `new_page` | A new page has been added |
+| `retraction` | A page has been removed or significantly redacted |
+| `pricing_change` | Pricing for a path has changed — agent may need to update budget allocation |
+| `signal_change` | Content signals (e.g. `ai_train`) have changed |
+| `mdf_capability` | The `/mdf.json` capability document itself has changed |
+
+This allows agents to make intelligent re-fetch decisions based on change type rather than fetching and diffing content. A `pricing_change` entry is actionable without re-fetching any content at all.
+
+**Push via WebSub** is the recommended upgrade path for sites that want real-time agent notification rather than polling. Sites declare a WebSub hub in the feed `<link rel="hub">` element per the W3C WebSub spec. Agents that support WebSub receive pushed change notifications; those that do not fall back to polling gracefully. No MDF-specific hub is required — any compliant WebSub hub works.
+
 ---
 
 ## What MDF Is Not
@@ -193,8 +236,7 @@ The following are explicitly unresolved and intended to drive community discussi
 1. **Payment rail standardisation** — Should the spec recommend a default chain/currency, or remain fully agnostic? Agnosticism is cleaner but creates interoperability friction for agent implementors.
 2. **Receipt verification** — How does a site verify payment without running a full node? Trust a third-party RPC, run a light client, or accept signed payment proofs from a settlement layer?
 3. **Rate limiting and abuse** — A $0.00 endpoint is still reachable by abusive scrapers. Should MDF include a rate-limit signalling mechanism separate from price?
-4. **Markdown dialect** — Should MDF specify a markdown dialect (CommonMark, GFM) or remain agnostic? Agents benefit from predictability; authors benefit from flexibility.
-5. **Content freshness** — How should agents know when markdown content has changed? ETags and `Last-Modified` are standard HTTP but may need MDF-specific extensions for structured change signals.
+5. **Markdown dialect** — Should MDF specify a markdown dialect (CommonMark, GFM) or remain agnostic? Agents benefit from predictability; authors benefit from flexibility.
 6. **Human access to paid content** — If `/premium/*` costs $1.00 per agent fetch, how does a human subscriber access it? MDF should not break human auth flows. Possible answer: price applies only to `Accept: text/markdown` requests; human HTML requests use existing auth (cookies, sessions) independently.
 
 ---
@@ -213,7 +255,7 @@ The goal is a spec that is good enough to be useful, simple enough to implement 
 
 ## Acknowledgements
 
-MDF builds on the work of Jeremy Howard (llms.txt), the HTTP working group (content negotiation, RFC 7231), the x402 protocol contributors, and Cloudflare's Markdown for Agents feature which demonstrated the demand at scale.
+MDF builds on the work of Jeremy Howard (llms.txt), the HTTP working group (content negotiation, RFC 7231), the x402 protocol contributors, Cloudflare's Markdown for Agents feature which demonstrated the demand at scale, the RSS/Atom community whose feed standards MDF extends for agent subscriptions, and the W3C WebSub working group.
 
 ---
 
