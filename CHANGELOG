@@ -1,0 +1,27 @@
+# Changelog
+
+All notable changes to the MDF specification and reference implementation will be documented here.
+
+This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
+
+---
+
+## [Unreleased]
+
+- Reference implementation (`mdf-server` Docker image)
+- Demo site with live end-to-end payment tier demonstration
+- `mdf.schema.json` validator CLI tool
+
+---
+
+## [0.1.0-draft] — 2026-05-23
+
+Initial public draft.
+
+### Added
+- `CONCEPT.md` — full proposal covering problem statement, existing partial solutions, MDF philosophy, architecture, payment spectrum, auth-via-payment model, content signals, open questions, and reference implementation plan
+- `README.md` — project overview and status
+- `mdf.schema.json` — JSON Schema (Draft 2020-12) for the `/mdf.json` capability document, covering pricing, payment, auth, content signals, format capabilities, and llms.txt linkage
+
+### Authors
+Gary Walker / BitCryptic™ · Graham Hall / Slepner
