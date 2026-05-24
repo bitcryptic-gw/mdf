@@ -7,34 +7,6 @@
 
 ---
 
-## Live Demo
-
-A reference implementation is publicly deployed at **https://mdf-demo.bitcryptic.com**
-
-Try it now:
-
-```bash
-# Discover the site's MDF capabilities
-curl https://mdf-demo.bitcryptic.com/mdf.json
-
-# Fetch the agent index
-curl https://mdf-demo.bitcryptic.com/llms.txt
-
-# Request markdown directly (agent-style)
-curl -H "Accept: text/markdown" https://mdf-demo.bitcryptic.com/
-
-# Free content — no payment required
-curl -H "Accept: text/markdown" https://mdf-demo.bitcryptic.com/docs/getting-started
-
-# Paid content — returns 402 with payment instructions
-curl -H "Accept: text/markdown" https://mdf-demo.bitcryptic.com/premium/deep-dive
-
-# Private content — returns 402 with auth endpoint hint
-curl https://mdf-demo.bitcryptic.com/private/internals
-```
-
-The demo site exercises all three payment tiers and the full auth-via-payment flow. Payment verification is stubbed — no real transaction is required to explore the protocol behaviour.
-
 ## The problem in one paragraph
 
 AI agents are now among the most frequent consumers of web content, yet the web serves them HTML — a format built for human eyes. Agents must strip navigation, ads, scripts, and layout markup to reach the content underneath, wasting 5–10× the tokens actually needed. MDF proposes a simple, open architecture to fix this: markdown as the canonical source, HTTP content negotiation for delivery, and an optional payment layer that doubles as access policy.
@@ -64,9 +36,40 @@ The concept document covers the full architecture, existing partial solutions, o
 ## Current status
 
 - [x] Concept document published
-- [ ] `mdf.schema.json` — JSON Schema for `/mdf.json`
-- [ ] Reference implementation — self-hostable Docker image (`mdf-server`)
-- [ ] Demo site — live end-to-end demonstration of all three payment tiers
+- [x] `mdf.schema.json` — JSON Schema for `/mdf.json`
+- [x] Reference implementation — self-hostable Docker image (`mdf-server`)
+- [x] Demo site — https://mdf-demo.bitcryptic.com — live end-to-end demonstration of all three payment tiers
+- [ ] On-chain x402 payment verification (currently stubbed)
+- [ ] Validator CLI
+- [ ] Feed namespace for change-type metadata
+
+## Live Demo
+
+A reference implementation is publicly deployed at **https://mdf-demo.bitcryptic.com**
+
+Try it now:
+
+```bash
+# Discover the site's MDF capabilities
+curl https://mdf-demo.bitcryptic.com/mdf.json
+
+# Fetch the agent index
+curl https://mdf-demo.bitcryptic.com/llms.txt
+
+# Request markdown directly (agent-style)
+curl -H "Accept: text/markdown" https://mdf-demo.bitcryptic.com/
+
+# Free content — no payment required
+curl -H "Accept: text/markdown" https://mdf-demo.bitcryptic.com/docs/getting-started
+
+# Paid content — returns 402 with payment instructions
+curl -H "Accept: text/markdown" https://mdf-demo.bitcryptic.com/premium/deep-dive
+
+# Private content — returns 402 with auth endpoint hint
+curl https://mdf-demo.bitcryptic.com/private/internals
+```
+
+The demo site exercises all three payment tiers and the full auth-via-payment flow. Payment verification is stubbed — no real transaction is required to explore the protocol behaviour.
 
 ## Get involved
 
