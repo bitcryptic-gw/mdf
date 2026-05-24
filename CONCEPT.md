@@ -204,20 +204,24 @@ This allows agents to make intelligent re-fetch decisions based on change type r
 
 ---
 
-## Reference Implementation Plan
+## Reference Implementation
 
-The reference implementation will be a self-hostable Docker image (`bitcryptic/mdf-server`) acting as a reverse proxy or standalone server. It will:
+A reference implementation is available at **https://github.com/bitcryptic-gw/mdf** and publicly deployed at **https://mdf-demo.bitcryptic.com**.
 
-- Serve markdown natively from a content directory, with HTML rendered dynamically for browser requests
-- Auto-generate `/llms.txt` and `/mdf.json` from site configuration
-- Handle `Accept: text/markdown` content negotiation
-- Integrate x402 payment verification against configurable chains
-- Issue and validate bearer tokens for high-price-tier access
-- Expose a simple dashboard: fetch counts, earnings, content signal summary
+The implementation is a self-hostable Docker image (`mdf-reference-server`) built on Bun. It demonstrates the full MDF architecture end-to-end:
 
-Target stack: Bun + Caddy or standalone Bun HTTP server, Docker image for Unraid/standard Docker deployment, configuration via a single `mdf.yaml`.
+- Markdown-native content serving with dynamic HTML rendering for browser requests
+- `Accept: text/markdown` content negotiation at existing URLs — no new protocol or port
+- Auto-generated `/llms.txt` and `/mdf.json` from a single `mdf.yaml` configuration file
+- Three-tier pricing demonstration: open access (`/docs/**`), micropayment (`/premium/**`), and private auth-via-payment (`/private/**`)
+- x402 payment verification (stubbed — structural validation only, on-chain verification not yet implemented)
+- Bearer token issuance and validation for high-price-tier access
+- Standard HTTP ETags and conditional GET support
+- Internal dashboard on a separate port (not publicly exposed)
 
-A hosted demo site will accompany the reference implementation, demonstrating all three payment tiers end-to-end.
+The payment verification stub accepts structurally valid x402 proofs and logs them for audit without performing on-chain receipt checks. This allows the full protocol flow to be explored without live transactions. Real x402 verification is the next implementation milestone.
+
+Configuration is via a single `mdf.yaml` file. The wallet address is supplied via Docker secret file and never appears in environment variables or image layers.
 
 ---
 
