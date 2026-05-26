@@ -31,7 +31,9 @@ Several initiatives have addressed pieces of this problem, but none provide a co
 
 **Cloudflare Markdown for Agents** (February 2026) productises content negotiation at the CDN edge, converting HTML to markdown in real time for any site behind Cloudflare. It adds `x-markdown-tokens` and `Content-Signal` headers. This is a conversion approach — it does not change the fact that HTML remains the source of truth, and it is tied to a single vendor's infrastructure.
 
-**x402** is an emerging HTTP payment protocol using the long-reserved `402 Payment Required` status code, designed for machine-to-machine micropayments, particularly over crypto rails. It is not web-content-specific but provides exactly the payment primitive MDF needs.
+**x402** is an emerging HTTP payment protocol using the long-reserved `402 Payment Required` status code, designed for machine-to-machine micropayments over EVM-compatible crypto rails. It is not web-content-specific but provides exactly the payment primitive MDF needs for stablecoin and EVM-based payment flows.
+
+**L402** (formerly LSAT) is a complementary HTTP payment and authentication protocol built on Bitcoin's Lightning Network. It combines a Lightning invoice with a macaroon-based bearer credential, enabling sub-second, sub-cent micropayments without on-chain settlement latency. Like x402, L402 uses the `402 Payment Required` status code and is designed for machine-to-machine use. It is already supported by a growing ecosystem of Lightning-native services and tooling. MDF supports L402 as the Bitcoin-native payment rail alongside x402.
 
 **RSS/Atom** solved the content freshness problem for human subscribers in the early 2000s — rather than polling pages repeatedly, subscribers watch a feed and receive notifications when content changes. The same problem exists for agents, and the same solution applies. RSS/Atom feeds are near-universally supported and already present on most content sites.
 
@@ -133,13 +135,23 @@ This model has several useful properties:
 - **Gradual monetisation** — owners can start at $0.00 and adjust without changing infrastructure
 - **Human browsing is unaffected** — the payment layer applies only to `Accept: text/markdown` requests; standard HTML requests are served normally
 
+### Payment Rails
+
+MDF is payment-rail-agnostic. Any mechanism that can produce a verifiable payment proof is compatible. Two protocols are the natural first implementations:
+
+**x402** handles EVM-compatible chains (Base, Ethereum, Polygon, Solana) with stablecoin payments (USDC, USDT). It is well-suited to agents operating in a crypto-native or DeFi context, and to site operators who already manage EVM wallets.
+
+**L402** handles Bitcoin via the Lightning Network. Lightning payments settle in sub-seconds at sub-cent fees with no on-chain transaction required. L402 pairs the Lightning invoice with a macaroon credential, so payment and access token issuance happen in a single round trip. It is well-suited to operators and agents in the Bitcoin ecosystem and to any use case where Lightning's payment finality and minimal trust assumptions are preferable to EVM settlement.
+
+Sites advertise which rails they accept in `/mdf.json` via `payment.accepted_chains`. Agents select the rail their operator supports. Both protocols use the `402 Payment Required` response code, and MDF's payment flow is identical regardless of which rail executes it.
+
 ### Authentication via Payment
 
 At high price points, payment transitions from a micropayment into an access token request. The flow:
 
 1. Agent fetches `/mdf.json`, sees price of `$X` for a section
 2. Agent sends payment transaction to the site's declared wallet/payment endpoint
-3. Site verifies payment on-chain and issues a time-limited bearer token
+3. Site verifies payment (on-chain receipt for x402; Lightning invoice settlement for L402) and issues a time-limited bearer token
 4. Agent includes bearer token in subsequent `Authorization` header for markdown fetches
 5. Site serves markdown to token-bearing requests without further payment per fetch (or per session, per volume — owner configurable)
 
@@ -200,28 +212,25 @@ This allows agents to make intelligent re-fetch decisions based on change type r
 - **Not a new protocol.** MDF uses HTTP throughout. No new URL scheme, no new transport layer, no new port.
 - **Not a Cloudflare replacement.** MDF is infrastructure-agnostic. A Caddy plugin, an Nginx module, a Node middleware, or a CDN feature can all implement it.
 - **Not a DRM system.** MDF cannot prevent determined scrapers. It creates a standard, economic incentive for compliant behaviour and an audit trail for non-compliant behaviour.
-- **Not prescriptive about payment rails.** The spec defines the interface; USDC on Base is a natural first implementation but any payment rail that can produce a verifiable on-chain receipt is compatible.
+- **Not prescriptive about payment rails.** The spec defines the interface; x402 over EVM chains and L402 over Lightning are the natural first implementations, but any payment rail that can produce a verifiable payment proof is compatible.
 
 ---
 
-## Reference Implementation
+## Reference Implementation Plan
 
-A reference implementation is available at **https://github.com/bitcryptic-gw/mdf** and publicly deployed at **https://mdf-demo.bitcryptic.com**.
+The reference implementation will be a self-hostable Docker image (`bitcryptic/mdf-server`) acting as a reverse proxy or standalone server. It will:
 
-The implementation is a self-hostable Docker image (`mdf-reference-server`) built on Bun. It demonstrates the full MDF architecture end-to-end:
+- Serve markdown natively from a content directory, with HTML rendered dynamically for browser requests
+- Auto-generate `/llms.txt` and `/mdf.json` from site configuration
+- Handle `Accept: text/markdown` content negotiation
+- Integrate x402 payment verification against configurable EVM chains
+- Integrate L402 payment verification against a configurable Lightning node or LSP endpoint
+- Issue and validate bearer tokens for high-price-tier access
+- Expose a simple dashboard: fetch counts, earnings by rail, content signal summary
 
-- Markdown-native content serving with dynamic HTML rendering for browser requests
-- `Accept: text/markdown` content negotiation at existing URLs — no new protocol or port
-- Auto-generated `/llms.txt` and `/mdf.json` from a single `mdf.yaml` configuration file
-- Three-tier pricing demonstration: open access (`/docs/**`), micropayment (`/premium/**`), and private auth-via-payment (`/private/**`)
-- x402 payment verification (stubbed — structural validation only, on-chain verification not yet implemented)
-- Bearer token issuance and validation for high-price-tier access
-- Standard HTTP ETags and conditional GET support
-- Internal dashboard on a separate port (not publicly exposed)
+Target stack: Bun + Caddy or standalone Bun HTTP server, Docker image for Unraid/standard Docker deployment, configuration via a single `mdf.yaml`.
 
-The payment verification stub accepts structurally valid x402 proofs and logs them for audit without performing on-chain receipt checks. This allows the full protocol flow to be explored without live transactions. Real x402 verification is the next implementation milestone.
-
-Configuration is via a single `mdf.yaml` file. The wallet address is supplied via Docker secret file and never appears in environment variables or image layers.
+A hosted demo site will accompany the reference implementation, demonstrating all three payment tiers end-to-end across both payment rails.
 
 ---
 
@@ -237,8 +246,8 @@ This positions BitCryptic Compute not only as an AI inference marketplace but as
 
 The following are explicitly unresolved and intended to drive community discussion:
 
-1. **Payment rail standardisation** — Should the spec recommend a default chain/currency, or remain fully agnostic? Agnosticism is cleaner but creates interoperability friction for agent implementors.
-2. **Receipt verification** — How does a site verify payment without running a full node? Trust a third-party RPC, run a light client, or accept signed payment proofs from a settlement layer?
+1. **Payment rail standardisation** — Should the spec recommend a default rail (x402 on Base? L402 on Lightning?), or remain fully agnostic? Agnosticism is cleaner but creates interoperability friction for agent implementors who must support multiple rails.
+2. **Receipt verification** — How does a site verify payment without running a full node? For x402: trust a third-party RPC, run a light client, or accept signed payment proofs from a settlement layer. For L402: trust an LSP, run a lightweight Lightning node, or verify macaroon credentials independently.
 3. **Rate limiting and abuse** — A $0.00 endpoint is still reachable by abusive scrapers. Should MDF include a rate-limit signalling mechanism separate from price?
 4. **Update gaming and re-fetch incentives** — The content freshness and subscription model must not create economic incentives for content owners to manipulate change frequency or volume. Two distinct attack vectors exist: (a) *high-frequency trivial changes* — an owner makes constant minor edits to trigger agent re-fetches and repeated payments; (b) *deliberate large rewrites* — an owner makes sweeping content changes to reset the payment clock and justify a full re-fetch fee. Several mitigations are under consideration, none yet adopted as the canonical approach: a *time-window access model* where a paid fetch grants access to all updates within a defined window (e.g. 24 hours), making incremental change gaming economically irrational; a *change significance floor* expressed as a normalised `mdf:significance` score (0.0–1.0, computed server-side via diff) that agents can threshold to ignore low-value updates without fetching or paying; and a *feed-level subscription price* replacing per-fetch update pricing entirely, aligning owner incentives with producing genuinely useful content rather than churn. The time-window model is the current preferred direction for its simplicity and the fact that it makes gaming irrational by design rather than relying on detectable behaviour. Community input is sought before this is committed to the architecture.
 5. **Markdown dialect** — Should MDF specify a markdown dialect (CommonMark, GFM) or remain agnostic? Agents benefit from predictability; authors benefit from flexibility.
@@ -260,7 +269,7 @@ The goal is a spec that is good enough to be useful, simple enough to implement 
 
 ## Acknowledgements
 
-MDF builds on the work of Jeremy Howard (llms.txt), the HTTP working group (content negotiation, RFC 7231), the x402 protocol contributors, Cloudflare's Markdown for Agents feature which demonstrated the demand at scale, the RSS/Atom community whose feed standards MDF extends for agent subscriptions, and the W3C WebSub working group.
+MDF builds on the work of Jeremy Howard (llms.txt), the HTTP working group (content negotiation, RFC 7231), the x402 protocol contributors, the L402 protocol contributors and the broader Lightning Network development community, Cloudflare's Markdown for Agents feature which demonstrated the demand at scale, the RSS/Atom community whose feed standards MDF extends for agent subscriptions, and the W3C WebSub working group.
 
 ---
 
