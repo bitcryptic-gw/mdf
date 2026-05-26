@@ -71,16 +71,16 @@
         "endpoint": {
           "type": "string",
           "format": "uri",
-          "description": "URL to which agents submit x402-compatible payment proofs.",
+          "description": "URL to which agents submit payment proofs. Must handle both x402-compatible EVM payment proofs and L402 Lightning payment proofs, as indicated by the agent's chosen rail from accepted_chains.",
           "examples": ["https://example.com/mdf/pay"]
         },
 
         "accepted_chains": {
           "type": "array",
-          "description": "List of accepted blockchain networks. Agents should select from this list when constructing payments.",
+          "description": "List of accepted payment rails. For EVM networks use the chain name (e.g. 'base', 'ethereum'). For Bitcoin Lightning use 'lightning'. Agents select from this list when constructing payments.",
           "items": {
             "type": "string",
-            "examples": ["base", "ethereum", "polygon", "solana"]
+            "examples": ["base", "ethereum", "polygon", "solana", "lightning"]
           },
           "minItems": 1,
           "uniqueItems": true
@@ -88,7 +88,7 @@
 
         "accepted_currencies": {
           "type": "array",
-          "description": "List of accepted currency symbols. Agents should select a currency supported on their chosen chain.",
+          "description": "List of accepted currency symbols. For Lightning payments use 'BTC' (denominated in satoshis). Agents should select a currency supported on their chosen chain.",
           "items": {
             "type": "string",
             "examples": ["USDC", "USDT", "ETH", "BTC"]
@@ -99,8 +99,8 @@
 
         "wallet": {
           "type": "string",
-          "description": "Primary receiving wallet address. Format is chain-dependent. For EVM chains, a checksummed 0x address.",
-          "examples": ["0xAbCd1234AbCd1234AbCd1234AbCd1234AbCd1234"]
+          "description": "Primary receiving address. Format is rail-dependent: for EVM chains, a checksummed 0x address; for Lightning, a node public key or LNURL.",
+          "examples": ["0xAbCd1234AbCd1234AbCd1234AbCd1234AbCd1234", "lnurl1dp68gurn8ghj7..."]
         }
 
       }
@@ -108,7 +108,7 @@
 
     "auth": {
       "type": "object",
-      "description": "Authentication configuration. When present, indicates that high-price-tier payment triggers bearer token issuance rather than per-fetch content delivery.",
+      "description": "Authentication configuration. When present, indicates that high-price-tier payment triggers bearer token issuance rather than per-fetch content delivery. Applies to both x402 and L402 payment flows.",
       "additionalProperties": false,
       "properties": {
 
@@ -271,14 +271,14 @@
 
         "currency": {
           "type": ["string", "null"],
-          "description": "Currency symbol. Null or omitted for free access.",
-          "examples": ["USDC", "USDT", "ETH", null]
+          "description": "Currency symbol. Null or omitted for free access. Use 'BTC' for Lightning-denominated prices (amounts in satoshis).",
+          "examples": ["USDC", "USDT", "ETH", "BTC", null]
         },
 
         "chain": {
           "type": ["string", "null"],
-          "description": "Preferred blockchain network for this price tier. Null or omitted for free access. Agents may select an alternative from payment.accepted_chains if preferred chain is unsupported.",
-          "examples": ["base", "ethereum", "polygon", "solana", null]
+          "description": "Preferred payment rail for this price tier. Use an EVM chain name (e.g. 'base', 'ethereum') for x402 flows, or 'lightning' for L402/Lightning flows. Null or omitted for free access. Agents may select an alternative from payment.accepted_chains if the preferred rail is unsupported.",
+          "examples": ["base", "ethereum", "polygon", "solana", "lightning", null]
         }
 
       }
@@ -301,8 +301,8 @@
       },
       "payment": {
         "endpoint": "https://example.com/mdf/pay",
-        "accepted_chains": ["base", "ethereum"],
-        "accepted_currencies": ["USDC", "USDT"],
+        "accepted_chains": ["base", "ethereum", "lightning"],
+        "accepted_currencies": ["USDC", "USDT", "BTC"],
         "wallet": "0xAbCd1234AbCd1234AbCd1234AbCd1234AbCd1234"
       },
       "auth": {
