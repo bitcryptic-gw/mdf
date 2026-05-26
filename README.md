@@ -16,7 +16,7 @@ AI agents are now among the most frequent consumers of web content, yet the web 
 - **Markdown-first authoring** — markdown is the source of truth; HTML is rendered from it for browsers, not the other way around
 - **Native agent serving** — `Accept: text/markdown` returns clean markdown at the same URL, no conversion middleware required
 - **Structured discovery** — `/mdf.json` advertises capabilities, pricing, and content signals in a machine-readable format that agents can query before fetching
-- **Price as access policy** — a single price field unifies open access, micropayment, and private/authenticated access into one continuous spectrum, using the x402 payment standard
+- **Price as access policy** — a single price field unifies open access, micropayment, and private/authenticated access into one continuous spectrum, using the x402 (EVM/stablecoin) and L402 (Bitcoin/Lightning) payment standards
 
 ## How the price spectrum works
 
@@ -39,7 +39,10 @@ The concept document covers the full architecture, existing partial solutions, o
 - [x] `mdf.schema.json` — JSON Schema for `/mdf.json`
 - [x] Reference implementation — self-hostable Docker image (`mdf-server`)
 - [x] Demo site — https://mdf-demo.bitcryptic.com — live end-to-end demonstration of all three payment tiers
-- [ ] On-chain x402 payment verification (currently stubbed)
+- [x] x402 payment verification stub (EVM/stablecoin rail)
+- [x] L402 payment verification stub (Bitcoin/Lightning rail)
+- [ ] On-chain x402 payment verification (stub → production)
+- [ ] Lightning invoice verification for L402 (stub → production)
 - [ ] Validator CLI
 - [ ] Feed namespace for change-type metadata
 
@@ -69,7 +72,7 @@ curl -H "Accept: text/markdown" https://mdf-demo.bitcryptic.com/premium/deep-div
 curl https://mdf-demo.bitcryptic.com/private/internals
 ```
 
-The demo site exercises all three payment tiers and the full auth-via-payment flow. Payment verification is stubbed — no real transaction is required to explore the protocol behaviour.
+The demo site exercises all three payment tiers and the full auth-via-payment flow. Both x402 (EVM) and L402 (Lightning) payment rails are stubbed — no real transaction is required to explore the protocol behaviour.
 
 ## Get involved
 
