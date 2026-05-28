@@ -166,6 +166,64 @@ MDF adopts and extends the Content-Signal pattern (as introduced by Cloudflare) 
 - `search` — whether content may be indexed by search systems
 - `human_only` — whether content is intended exclusively for human consumption (suppresses agent serving regardless of payment)
 
+#### Human Presence Verification
+
+The `human_only` signal expresses intent, but intent is not enforcement. For content where the
+distinction between a human and an agent consumer genuinely matters, a stronger mechanism is needed.
+
+Passkeys (WebAuthn/FIDO2) are the strongest available human-presence primitive on the web today. A
+passkey operation requires a hardware gesture — biometric, PIN, or physical tap — that cannot be
+delegated to software without the human's active participation. This is precisely the gap that
+platforms serving royalty-bearing or sensitive content struggle to close: a session token proves
+authentication happened, but not that a human initiated the request. Agents holding valid credentials
+are indistinguishable from humans at the token layer alone.
+
+For `human_only` content tiers where a meaningful price is set, we think the right pattern is to
+require a WebAuthn assertion as part of the payment and token-issuance flow:
+
+1. Agent fetches `/mdf.json`, sees `human_only: true` for the requested section and a non-zero price.
+2. Agent surfaces this to its human operator — it cannot satisfy the requirement autonomously.
+3. Human authenticates with their passkey, submits payment, and receives a time-limited bearer token
+   carrying the WebAuthn attestation.
+4. Agent uses that token for subsequent fetches within the session — mirroring how a human would
+   delegate access after logging in to a conventional site.
+
+This keeps passkeys out of the critical path for agent-accessible content, where they would be an
+outright barrier, while giving publishers a meaningful human-presence gate for content that warrants it.
+
+Note the relationship to open question 6 (human access to paid content): the separation of HTML and
+markdown auth flows is the foundational answer to that question — human browsers use existing session
+auth, agents use the payment-and-token flow. Passkey attestation sits within the payment-and-token
+flow as an optional additional signal for `human_only` tiers specifically. The two mechanisms are
+complementary, not competing.
+
+**On the fraud incentive structure**
+
+A related concern — prompted by how streaming platforms handle artificial consumption fraud — is
+whether MDF faces a similar consumer-side abuse problem. We don't think it does, for a structural
+reason: in MDF, payment flows upstream. The consumer pays the content owner per fetch. There is no
+financial incentive to fake consumption, because doing so costs the attacker money rather than
+earning it. The fraud vector that plagues per-stream royalty models — bots holding valid credentials
+and simulating activity to inflate payouts — does not exist in this architecture.
+
+The producer-side equivalent — content owners making trivial updates to force agent re-fetches and
+extract repeated payments — is a real concern and is tracked separately as open question 4.
+
+**Where we'd welcome input**
+
+We're reasonably confident passkeys belong at the extension layer rather than in MDF core, and that
+the payment-upstream model eliminates the streaming-fraud analogue. Two points where we're less
+certain and would value community input:
+
+- Should WebAuthn verification for `human_only` tiers be performed directly by the MDF server, or
+  delegated to an identity provider? Direct verification is simpler and avoids third-party
+  dependencies; IdP delegation is more flexible for sites with existing auth infrastructure.
+- Should `human_only` be expressible at the section level in `/mdf.json` (as it currently is), at
+  the per-resource level via response headers, or both?
+
+If you've worked on human-presence verification in agent-native architectures, we'd genuinely like
+to hear your perspective — open an issue or start a discussion in the spec repo.
+
 These are advisory signals. MDF does not enforce them technically but provides a standard vocabulary for expressing them, enabling compliant agent operators to honour them.
 
 ### Content Freshness and Agent Subscriptions

@@ -11,6 +11,16 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Feed smoke tests for reference server
 - Validator CLI enhancements — feed validation, WebSub hub reachability
 
+### Added
+
+- **CONCEPT.md — Human Presence Verification subsection** added to the Content Signals section.
+  Covers passkeys (WebAuthn/FIDO2) as the recommended human-presence primitive for `human_only`
+  content tiers, the proposed passkey-attested payment-and-token flow, the structural argument for
+  why MDF's payment-upstream model eliminates the consumer-side fraud incentive present in
+  per-stream royalty platforms, and two open questions for community input (direct vs delegated
+  WebAuthn verification; section-level vs per-resource `human_only` granularity). Cross-references
+  open questions 4 and 6.
+
 ---
 
 ## [0.1.0-draft] — 2026-05-23 / updated 2026-05-28
