@@ -226,22 +226,21 @@ This allows agents to make intelligent re-fetch decisions based on change type r
 
 ---
 
-## Reference Implementation Plan
+## Reference Implementation
 
-The reference implementation will be a self-hostable Docker image (`bitcryptic/mdf-server`) acting as a reverse proxy or standalone server. It will:
+The reference implementation is a self-hostable Docker image (`bitcryptic/mdf-server`) available on Docker Hub. Source is at `bitcryptic-gw/mdf-reference-server`. It:
 
-- Serve markdown natively from a content directory, with HTML rendered dynamically for browser requests
-- Auto-generate `/llms.txt` and `/mdf.json` from site configuration
-- Handle `Accept: text/markdown` content negotiation
-- Integrate x402 payment verification against configurable EVM chains
-- Integrate L402 payment verification against a configurable Lightning node or LSP endpoint
-- Issue and validate bearer tokens for high-price-tier access
-- Expose a simple dashboard: fetch counts, earnings by rail, content signal summary
+- Serves markdown natively from a content directory, with HTML rendered dynamically for browser requests
+- Auto-generates `/llms.txt` and `/mdf.json` from site configuration
+- Handles `Accept: text/markdown` content negotiation
+- Integrates x402 payment verification against configurable EVM chains
+- Integrates L402 payment verification against a configurable Lightning node or LSP endpoint
+- Issues and validate bearer tokens for high-price-tier access
+- Exposes a simple dashboard: fetch counts, earnings by rail, content signal summary
 
 Target stack: Bun + Caddy or standalone Bun HTTP server, Docker image for Unraid/standard Docker deployment, configuration via a single `mdf.yaml`.
 
-A hosted demo site will accompany the reference implementation, demonstrating all three payment tiers end-to-end across both payment rails.
-
+A hosted demo site is live at **https://mdf-demo.bitcryptic.com**, demonstrating all three payment tiers end-to-end across both payment rails.
 ---
 
 ## Relationship to BitCryptic Compute
