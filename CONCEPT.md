@@ -176,19 +176,29 @@ Polling is as wasteful for agents as it was for RSS readers in 2003. MDF address
 
 **Site-level change subscriptions** borrow from RSS/Atom and WebSub. MDF-compliant sites expose a feed (RSS 2.0 or Atom 1.0) at a URL advertised in `/mdf.json`. Agents that support feed polling can watch for changes without fetching every page repeatedly.
 
-MDF extends the standard feed format with an optional `<mdf:change>` namespace providing agent-semantic change metadata per entry:
+MDF extends the standard feed format with the `mdf:` XML namespace, providing agent-semantic change metadata per entry:
 
 ```xml
-<item>
-  <title>Pricing updated for /premium section</title>
-  <link>https://example.com/premium/overview</link>
-  <pubDate>Sat, 23 May 2026 10:00:00 +0000</pubDate>
-  <mdf:change_type>pricing_change</mdf:change_type>
-  <mdf:path>/premium/**</mdf:path>
-  <mdf:content_signals_changed>false</mdf:content_signals_changed>
-  <mdf:token_delta>0</mdf:token_delta>
-</item>
+<feed
+  xmlns="http://www.w3.org/2005/Atom"
+  xmlns:mdf="https://github.com/bitcryptic-gw/mdf/ns/1.0">
+
+  <link rel="hub" href="https://pubsubhubbub.appspot.com/"/>
+
+  <entry>
+    <id>urn:uuid:38398fe6-b711-45af-a5ce-ee27da9f89d0</id>
+    <title>Pricing updated for /premium section</title>
+    <updated>2026-05-28T10:00:00.000Z</updated>
+    <link rel="alternate" href="https://example.com/premium/overview"/>
+    <mdf:change_type>pricing_change</mdf:change_type>
+  </entry>
+
+</feed>
 ```
+
+**Namespace URI:** `https://github.com/bitcryptic-gw/mdf/ns/1.0`
+
+The namespace is declared on the root `<feed>` element. Each entry carries a single `<mdf:change_type>` element. The feed is Atom 1.0. A WebSub hub is declared via `<link rel="hub">` for push notification support.
 
 Defined `change_type` values:
 
