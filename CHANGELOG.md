@@ -6,13 +6,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
-- On-chain x402 payment verification (stub → production) — blocked on trust model decision, see issue #3
-- Lightning invoice verification for L402 (stub → production) — requires Lightning node availability
-- Feed smoke tests for reference server
-- Validator CLI enhancements — feed validation, WebSub hub reachability
-
 ### Added
-
 - **CONCEPT.md — Human Presence Verification subsection** added to the Content Signals section.
   Covers passkeys (WebAuthn/FIDO2) as the recommended human-presence primitive for `human_only`
   content tiers, the proposed passkey-attested payment-and-token flow, the structural argument for
