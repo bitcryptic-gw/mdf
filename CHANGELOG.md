@@ -1,52 +1,34 @@
 # Changelog
-
 All notable changes to the MDF specification and reference implementation will be documented here.
-
 This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
 ---
 
 ## [Unreleased]
 
-- `mdf.schema.json` validator CLI tool
-- MDF feed XML namespace definition (`xmlns:mdf`)
+- On-chain x402 payment verification (stub → production) — blocked on trust model decision, see issue #3
+- Lightning invoice verification for L402 (stub → production) — requires Lightning node availability
+- Feed smoke tests for reference server
+- Validator CLI enhancements — feed validation, WebSub hub reachability
 
 ---
 
-## [0.1.0-draft] - 2026-05-24
+## [0.1.0-draft] — 2026-05-23 / updated 2026-05-28
 
-### Added
-- CONCEPT.md — full architecture proposal and specification
-- mdf.schema.json — JSON Schema (Draft 2020-12) for /mdf.json capability document, strict with additionalProperties: false throughout
-- README.md — problem statement, architecture summary, status
-- Reference implementation (mdf-reference-server) — Bun-based HTTP server implementing the full MDF architecture
-  - Config loader with Zod validation and Docker secret resolution
-  - RFC 7231 Accept header parsing and content negotiation
-  - Markdown serving with dynamic HTML rendering via marked
-  - Auto-generated /mdf.json and /llms.txt from mdf.yaml
-  - x402 payment stub with structural validation and audit logging
-  - Bearer token issuance and validation for auth-via-payment tier
-  - Standard HTTP ETag and conditional GET support
-  - Internal dashboard on separate port
-- Live demo deployment at https://mdf-demo.bitcryptic.com
-- Docker image and Compose configuration for self-hosted deployment
-- 90 tests across all modules passing
+### Added — 2026-05-28
+- Reference implementation published to GitHub (`bitcryptic-gw/mdf-reference-server`) and Docker Hub (`bitcryptic/mdf-server:latest`)
+- Feed XML namespace confirmed: `xmlns:mdf="https://github.com/bitcryptic-gw/mdf/ns/1.0"`
+- Atom 1.0 feed at `/feed.xml` with `<mdf:change_type>` per entry, WebSub hub link, and persistent NDJSON event log — live at `https://mdf-demo.bitcryptic.com/feed.xml`
+- Validator CLI published to GitHub (`bitcryptic-gw/mdf-validator`) — validates `/mdf.json` schema compliance and MDF response headers; 6/6 checks passing against live demo
+- GitHub issue #3 opened: x402 receipt verification trust model — seeking community input
 
-### Status
-Spec: v0.1.0-draft — published, seeking community feedback
-Reference implementation: deployed and publicly accessible
-Payment verification: stubbed — on-chain x402 verification is the next milestone
-
----
-
-## [0.1.0-draft] — 2026-05-23
-
-Initial public draft.
-
-### Added
+### Added — 2026-05-23
 - `CONCEPT.md` — full proposal covering problem statement, existing partial solutions, MDF philosophy, architecture, payment spectrum, auth-via-payment model, content freshness and agent subscriptions (RSS/Atom + WebSub), content signals, open questions, and reference implementation plan
 - `README.md` — project overview and status
 - `mdf.schema.json` — JSON Schema (Draft 2020-12) for the `/mdf.json` capability document, covering pricing, payment, auth, content signals, format capabilities, feed/WebSub subscription configuration, and llms.txt linkage
+- x402 payment verification stub (EVM/stablecoin rail)
+- L402 payment verification stub (Bitcoin/Lightning rail)
+- Demo site live at `https://mdf-demo.bitcryptic.com`
 
 ### Authors
 Gary Walker / BitCryptic™ · Graham Hall / Slepner
