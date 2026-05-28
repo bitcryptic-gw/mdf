@@ -37,14 +37,14 @@ The concept document covers the full architecture, existing partial solutions, o
 
 - [x] Concept document published
 - [x] `mdf.schema.json` — JSON Schema for `/mdf.json`
-- [x] Reference implementation — self-hostable Docker image (`mdf-server`)
+- [x] Reference implementation — `bitcryptic/mdf-server` on Docker Hub (`bitcryptic-gw/mdf-reference-server`)
 - [x] Demo site — https://mdf-demo.bitcryptic.com — live end-to-end demonstration of all three payment tiers
 - [x] x402 payment verification stub (EVM/stablecoin rail)
 - [x] L402 payment verification stub (Bitcoin/Lightning rail)
+- [x] Atom feed with `mdf:change_type` namespace — live at https://mdf-demo.bitcryptic.com/feed.xml
+- [x] Validator CLI — `bitcryptic-gw/mdf-validator`
 - [ ] On-chain x402 payment verification (stub → production)
 - [ ] Lightning invoice verification for L402 (stub → production)
-- [ ] Validator CLI
-- [ ] Feed namespace for change-type metadata
 
 ## Live Demo
 
@@ -70,6 +70,9 @@ curl -H "Accept: text/markdown" https://mdf-demo.bitcryptic.com/premium/deep-div
 
 # Private content — returns 402 with auth endpoint hint
 curl https://mdf-demo.bitcryptic.com/private/internals
+
+# Atom feed with mdf:change_type metadata
+curl https://mdf-demo.bitcryptic.com/feed.xml
 ```
 
 The demo site exercises all three payment tiers and the full auth-via-payment flow. Both x402 (EVM) and L402 (Lightning) payment rails are stubbed — no real transaction is required to explore the protocol behaviour.
