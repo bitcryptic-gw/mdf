@@ -35,6 +35,8 @@ Several initiatives have addressed pieces of this problem, but none provide a co
 
 **L402** (formerly LSAT) is a complementary HTTP payment and authentication protocol built on Bitcoin's Lightning Network. It combines a Lightning invoice with a macaroon-based bearer credential, enabling sub-second, sub-cent micropayments without on-chain settlement latency. Like x402, L402 uses the `402 Payment Required` status code and is designed for machine-to-machine use. It is already supported by a growing ecosystem of Lightning-native services and tooling. MDF supports L402 as the Bitcoin-native payment rail alongside x402.
 
+> **402index.io** is a protocol-agnostic directory of paid APIs across L402, x402, and a third rail — MPP (Stripe/Tempo-facilitated session-based settlement). It indexes and payment-verifies endpoints across all three rails and exposes an MCP server for agent discovery. It is useful prior art demonstrating real-world demand for the 402 ecosystem and a potential discoverability layer for MDF-enabled sites. MPP is acknowledged here as an emerging rail; MDF's rail-agnostic design accommodates it without spec changes, but it is not in scope for v0.1.
+
 **RSS/Atom** solved the content freshness problem for human subscribers in the early 2000s — rather than polling pages repeatedly, subscribers watch a feed and receive notifications when content changes. The same problem exists for agents, and the same solution applies. RSS/Atom feeds are near-universally supported and already present on most content sites.
 
 **WebSub** (W3C, formerly PubSubHubbub) is the push layer that RSS never had built in. Publishers notify a hub when content changes; subscribers receive pushed updates rather than polling. It is already supported by WordPress, Blogger, and major feed readers, making it a natural push transport for MDF-aware agents.
@@ -144,6 +146,8 @@ MDF is payment-rail-agnostic. Any mechanism that can produce a verifiable paymen
 **L402** handles Bitcoin via the Lightning Network. Lightning payments settle in sub-seconds at sub-cent fees with no on-chain transaction required. L402 pairs the Lightning invoice with a macaroon credential, so payment and access token issuance happen in a single round trip. It is well-suited to operators and agents in the Bitcoin ecosystem and to any use case where Lightning's payment finality and minimal trust assumptions are preferable to EVM settlement.
 
 Sites advertise which rails they accept in `/mdf.json` via `payment.accepted_chains`. Agents select the rail their operator supports. Both protocols use the `402 Payment Required` response code, and MDF's payment flow is identical regardless of which rail executes it.
+
+A third rail — **MPP (Stripe/Tempo)** — has emerged in the broader 402 ecosystem. MPP is a session-based fiat settlement option facilitated by Stripe or Tempo rather than a decentralised payment network. It is not in scope for MDF v0.1 but is acknowledged as a future extension point. MDF's payment-rail-agnostic design means MPP could be added without architectural changes — a site would simply advertise it in `payment.accepted_chains` and implement the corresponding verification logic.
 
 ### Authentication via Payment
 
@@ -313,7 +317,7 @@ This positions BitCryptic Compute not only as an AI inference marketplace but as
 
 The following are explicitly unresolved and intended to drive community discussion:
 
-1. **Payment rail standardisation** — Should the spec recommend a default rail (x402 on Base? L402 on Lightning?), or remain fully agnostic? Agnosticism is cleaner but creates interoperability friction for agent implementors who must support multiple rails.
+1. **Payment rail standardisation** — Should the spec recommend a default rail (x402 on Base? L402 on Lightning?), or remain fully agnostic? Agnosticism is cleaner but creates interoperability friction for agent implementors who must support multiple rails. A third rail, MPP (Stripe/Tempo-facilitated session-based settlement), has emerged in the broader 402 ecosystem — MDF's rail-agnostic design accommodates it without spec changes but it is not yet formally in scope for v0.1.
 2. **Receipt verification** — How does a site verify payment without running a full node? For x402: trust a third-party RPC, run a light client, or accept signed payment proofs from a settlement layer. For L402: trust an LSP, run a lightweight Lightning node, or verify macaroon credentials independently.
 3. **Rate limiting and abuse** — A $0.00 endpoint is still reachable by abusive scrapers. Should MDF include a rate-limit signalling mechanism separate from price?
 4. **Update gaming and re-fetch incentives** — The content freshness and subscription model must not create economic incentives for content owners to manipulate change frequency or volume. Two distinct attack vectors exist: (a) *high-frequency trivial changes* — an owner makes constant minor edits to trigger agent re-fetches and repeated payments; (b) *deliberate large rewrites* — an owner makes sweeping content changes to reset the payment clock and justify a full re-fetch fee. Several mitigations are under consideration, none yet adopted as the canonical approach: a *time-window access model* where a paid fetch grants access to all updates within a defined window (e.g. 24 hours), making incremental change gaming economically irrational; a *change significance floor* expressed as a normalised `mdf:significance` score (0.0–1.0, computed server-side via diff) that agents can threshold to ignore low-value updates without fetching or paying; and a *feed-level subscription price* replacing per-fetch update pricing entirely, aligning owner incentives with producing genuinely useful content rather than churn. The time-window model is the current preferred direction for its simplicity and the fact that it makes gaming irrational by design rather than relying on detectable behaviour. Community input is sought before this is committed to the architecture.
@@ -336,7 +340,7 @@ The goal is a spec that is good enough to be useful, simple enough to implement 
 
 ## Acknowledgements
 
-MDF builds on the work of Jeremy Howard (llms.txt), the HTTP working group (content negotiation, RFC 7231), the x402 protocol contributors, the L402 protocol contributors and the broader Lightning Network development community, Cloudflare's Markdown for Agents feature which demonstrated the demand at scale, the RSS/Atom community whose feed standards MDF extends for agent subscriptions, and the W3C WebSub working group.
+MDF builds on the work of Jeremy Howard (llms.txt), the HTTP working group (content negotiation, RFC 7231), the x402 protocol contributors, the 402index.io team whose protocol-agnostic directory demonstrates real-world demand and provides a useful prior art reference for the broader 402 ecosystem, the L402 protocol contributors and the broader Lightning Network development community, Cloudflare's Markdown for Agents feature which demonstrated the demand at scale, the RSS/Atom community whose feed standards MDF extends for agent subscriptions, and the W3C WebSub working group.
 
 ---
 
