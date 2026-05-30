@@ -15,6 +15,21 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   WebAuthn verification; section-level vs per-resource `human_only` granularity). Cross-references
   open questions 4 and 6.
 
+### Changed
+- L402 payment verification: replaced stub with production implementation
+  - Alby Hub REST API client for invoice creation and settlement verification
+  - HMAC-bound macaroon signing with path scope, expiry, and nonce
+  - Preimage verification: SHA-256 hash check + Alby Hub settlement confirmation
+  - Invoice lookup via `/api/transactions` endpoint (Alby Hub experimental API)
+  - End-to-end tested 2026-05-30 with real Lightning sats (Olympus by ZEUS LSP, LDK backend)
+- New Docker secrets: `alby_api_token`, `lightning_token_secret` (alongside existing `wallet_address`)
+- `mdf.yaml` lightning block: `api_url`, `invoice_expiry_seconds`, `api_token`, `token_secret`
+- `src/config/schema.ts`: added `LightningSchema` and `lightning` field on `MdfConfigSchema`
+- `src/config/loader.ts`: lightning secret resolution block
+- `src/index.ts`: L402 branch before x402 in payment handler; `build402Response` awaited
+- Docker image now built multi-arch (linux/amd64 + linux/arm64) via `docker buildx`
+
+
 ---
 
 ## [0.1.0-draft] — 2026-05-23 / updated 2026-05-28
