@@ -44,7 +44,7 @@ The concept document covers the full architecture, existing partial solutions, o
 - [x] Atom feed with `mdf:change_type` namespace — live at https://mdf-demo.bitcryptic.com/feed.xml
 - [x] Validator CLI — `bitcryptic-gw/mdf-validator`
 - [ ] On-chain x402 payment verification (stub → production)
-- [ ] Lightning invoice verification for L402 (stub → production)
+- [x] Lightning invoice verification for L402 (stub → production)
 
 ## Live Demo
 
