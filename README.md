@@ -77,6 +77,13 @@ curl https://mdf-demo.bitcryptic.com/feed.xml
 
 The demo site exercises all three payment tiers and the full auth-via-payment flow. Both x402 (EVM) and L402 (Lightning) payment rails are stubbed — no real transaction is required to explore the protocol behaviour.
 
+## Ecosystem
+
+### MDF Analytics for WordPress
+A WordPress plugin that tracks AI agent traffic and `Accept: text/markdown` requests to your site, with a dashboard showing estimated earnings from MDF-enabled content. Phase 1 of a planned full MDF integration for WordPress including wallet connection and automatic markdown generation.
+
+→ [bitcryptic-gw/mdf-analytics-wp](https://github.com/bitcryptic-gw/mdf-analytics-wp)
+
 ## Get involved
 
 This is an early-stage community proposal. The open questions section of the concept document is a good starting point for discussion.
