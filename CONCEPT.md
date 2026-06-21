@@ -121,6 +121,18 @@ Example `/mdf.json`:
 }
 ```
 
+`/mdf.json` is a **capability and mechanism** declaration — not a coverage index, not a price list. Its job is to state that a site supports `Accept: text/markdown` negotiation, describe how payment works if it applies (which rails are accepted, where the payment endpoint lives), and declare site-level content signals. It does **not** state which specific URLs currently have markdown available, what fraction of the site is covered, or what any individual resource costs.
+
+Those questions are answered at request time by the actual response to an `Accept: text/markdown` request:
+
+- **200 with markdown** — available, and free (or already paid/entitled).
+- **402 with price details** — available, but requires payment for this resource.
+- **Normal HTML, no `Vary: Accept`** — markdown not available for this URL at all (not yet converted, or simply not offered).
+
+This design keeps `/mdf.json` static and reliable. Keeping it in sync with dynamic per-resource state — a backfill in progress, a newly published post not yet converted, per-post or per-tier pricing — would require continuous rewriting of a document that is meant to describe infrastructure. The per-request response is already the correct source of truth for resource-level state, and `/mdf.json` should not duplicate it and risk drifting out of sync. This also aligns with how x402 and L402 work at the protocol level: a 402 response, not a pre-declared price schedule, is the standard's price-discovery mechanism.
+
+The one piece of information `/mdf.json` must state accurately — because it cannot be discovered per-request the way coverage and per-URL price can — is **mechanism**: which payment rails are accepted, and where the payment endpoint lives. An agent needs this before it can even attempt payment.
+
 ### The Payment Spectrum
 
 The price field is not merely a transaction amount — it is the primary access policy signal. Site owners choose their position on a continuous spectrum:

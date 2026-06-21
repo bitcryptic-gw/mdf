@@ -15,6 +15,15 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   WebAuthn verification; section-level vs per-resource `human_only` granularity). Cross-references
   open questions 4 and 6.
 
+- **CONCEPT.md — `/mdf.json` scope clarification** added to the Discovery section. Codifies the
+  capability-not-coverage principle: `/mdf.json` declares that a site supports markdown negotiation
+  and describes the payment mechanism (accepted rails, payment endpoint), but does not state which
+  specific URLs have markdown available, what fraction of the site is covered, or what any individual
+  resource costs. Coverage and per-URL price are discovered at request time via the actual response
+  (200, 402, or HTML fallthrough). This avoids requiring continuous rewrites of a static document to
+  track dynamic per-resource state, and aligns with how x402/L402 already use the 402 response as
+  the price-discovery mechanism.
+
 ### Changed
 - L402 payment verification: replaced stub with production implementation
   - Alby Hub REST API client for invoice creation and settlement verification
