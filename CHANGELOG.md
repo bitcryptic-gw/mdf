@@ -24,6 +24,11 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   track dynamic per-resource state, and aligns with how x402/L402 already use the 402 response as
   the price-discovery mechanism.
 
+- **CONCEPT.md — Open Question #9** (broker/alternate content URL extension) added to the Open
+  Questions section. Whether `/mdf.json` should support declaring an alternate host for third-party
+  markdown serving, and if so how content integrity is verified (pre-declared pubkey with attested
+  signing vs content-hash pinning). The extension has not been built.
+
 ### Changed
 - L402 payment verification: replaced stub with production implementation
   - Alby Hub REST API client for invoice creation and settlement verification
