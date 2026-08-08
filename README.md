@@ -27,6 +27,8 @@ AI agents are now among the most frequent consumers of web content, yet the web 
 | `$1.00+` | Premium — meaningful payment for gated content |
 | `$100.00+` | Private — payment triggers an auth token issuance rather than immediate delivery |
 
+Servers performing on-server markdown conversion may also report the size reduction between the original HTML and the served markdown directly in the response — giving agents a concrete efficiency signal alongside the price itself, rather than requiring them to price a request in the dark. See the concept document's Response Value Signalling section for details.
+
 ## Read the full proposal
 
 → [CONCEPT.md](./CONCEPT.md)
