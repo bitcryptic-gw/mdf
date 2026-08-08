@@ -175,6 +175,36 @@ At high price points, payment transitions from a micropayment into an access tok
 
 This gives site operators a full authentication layer with no passwords, no OAuth, no API key management — payment is the credential issuance mechanism.
 
+### Response Value Signalling
+
+MDF servers performing on-server HTML-to-markdown conversion are in a position to measure, at request time, exactly how much smaller the markdown representation is than the HTML it was derived from. This is real, per-resource data already available to the server — not an estimate — since both representations exist at the moment a response is constructed.
+
+Servers **may** include a `savings` object in the `402 Payment Required` response body, reporting the size reduction between the source HTML and the converted markdown for the specific resource being requested. This lets an agent weigh the cost of payment against the concrete efficiency gain of the markdown representation before deciding whether to pay, rather than evaluating price in isolation.
+
+This is optional but recommended, not required — a server is fully MDF-compliant without emitting it. It is offered as good practice because it gives agents better-informed grounds to pay, without adding any new negotiation mechanism or access-control surface. It is informational only and carries no bearing on price, entitlement, or coverage.
+
+This mechanism is deliberately not placed under Payment Rails or Authentication via Payment above, despite the 402 response being its most immediately motivating case. Its scope is broader than payment: a server may also choose to emit the same `savings` object on free, `200`-with-markdown responses, purely as informational signal for the requesting agent's own accounting, or for aggregate site-level reporting. Nothing here restricts `savings` to priced content.
+
+**Shape:**
+
+```json
+"savings": {
+  "source_bytes": 48213,
+  "markdown_bytes": 6104,
+  "reduction_pct": 87.3
+}
+```
+
+- `source_bytes` — byte length of the rendered HTML representation the markdown was derived from.
+- `markdown_bytes` — byte length of the served markdown representation.
+- `reduction_pct` — `(1 - markdown_bytes / source_bytes) * 100`, rounded to one decimal place.
+
+Byte-size reduction is the primary, defensible metric: it is directly measurable from what the server already holds, with no tokenizer assumptions and no dependency on which model or vendor's tokenizer the requesting agent uses. Servers may additionally report an approximate token estimate, but if they do, it must be clearly labelled as a heuristic (e.g. an accompanying `token_estimate_note` describing the method, such as a chars/4 approximation), never presented as an authoritative count — actual token counts vary by tokenizer and cannot be verified for an arbitrary requesting agent.
+
+Implementations should measure `source_bytes` against the same rendered-HTML output the markdown conversion itself was run against (post-filter, post-shortcode-expansion, however the implementation's pipeline works), not raw unrendered source, so the comparison reflects what a human browser or naive scraper would actually receive.
+
+This is not a pricing mechanism and must not be used to influence or justify price — price remains governed entirely by the payment/402 flow described above. It is not a coverage or capability claim and has no relationship to `/mdf.json`, which continues to assert capability and mechanism only. `savings` is computed and disclosed per-response, at request time, exactly like price itself — never declared in advance in `/mdf.json`.
+
 ### Content Signals
 
 MDF adopts and extends the Content-Signal pattern (as introduced by Cloudflare) as a first-class field in `/mdf.json` and response headers. Signals include:

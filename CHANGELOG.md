@@ -29,6 +29,8 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   markdown serving, and if so how content integrity is verified (pre-declared pubkey with attested
   signing vs content-hash pinning). The extension has not been built.
 
+- Response Value Signalling: optional `savings` object in 402 (and optionally 200) markdown responses, reporting byte-size reduction between source HTML and served markdown, giving agents a concrete efficiency signal alongside price.
+
 ### Changed
 - L402 payment verification: replaced stub with production implementation
   - Alby Hub REST API client for invoice creation and settlement verification
