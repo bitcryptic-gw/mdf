@@ -30,6 +30,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   signing vs content-hash pinning). The extension has not been built.
 
 - Response Value Signalling: optional `savings` object in 402 (and optionally 200) markdown responses, reporting byte-size reduction between source HTML and served markdown, giving agents a concrete efficiency signal alongside price.
+- Response Value Signalling refinement: decoupled `source_bytes` as a standalone, conversion-independent size signal from the `savings` object, which remains specific to servers that perform markdown conversion.
 
 ### Changed
 - L402 payment verification: replaced stub with production implementation
