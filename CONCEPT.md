@@ -400,6 +400,7 @@ Target stack: Bun + Caddy or standalone Bun HTTP server, Docker image for Unraid
 A hosted demo site is live at **https://mdf-demo.bitcryptic.com**, demonstrating every payment tier end-to-end. The L402 rail settles real Lightning invoices; the x402 rail is stubbed pending on-chain verification.
 
 A reference **client** is at the concept stage: an MCP server that gives any MCP-capable agent runtime the ability to discover `/mdf.json`, negotiate for markdown, evaluate a 402 offer against the token cost of fetching the HTML instead, and pay within an operator-defined budget. The design is documented in `MCP-GATEWAY.md`. It is not built, and MDF does not require a client of any particular shape — see open questions 10 and 11.
+
 ---
 
 ## Relationship to BitCryptic Compute
