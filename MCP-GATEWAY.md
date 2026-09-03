@@ -31,6 +31,14 @@ This makes the MCP gateway the natural home for the parts of MDF that are inhere
 
 None of these belong in the spec. All of them are required for the spec to be usable.
 
+### Prior art: 402index.io
+
+`CONCEPT.md` already cites 402index.io in Existing Partial Solutions, and it matters here: 402index is a protocol-agnostic directory of paid endpoints across L402, x402 and MPP which payment-verifies its listings hourly **and already exposes an MCP server for agent discovery**. Anyone familiar with the 402 ecosystem will recognise §5 of this document as territory 402index occupies, and it would be dishonest to present the index idea as novel.
+
+The distinction is one of centre of gravity rather than novelty. 402index is a directory with an MCP interface: its product is the listing, and discovery is what it does. What is proposed here is a fetch client whose directory is optional, local, mirrorable, and never in the path of a request — a gateway that works perfectly well against a URL an agent already holds, with no index consulted at all. The two are complementary, and 402index is the obvious first source for an index feed under §5 rather than a competitor to it.
+
+This also connects to open question 7 in `CONCEPT.md` (`.well-known/l402-services` alignment). If MDF sites publish that document for broader 402-ecosystem compatibility, they become discoverable by 402index without any MDF-specific integration, and the feed problem partly solves itself.
+
 ## 3. Tool surface
 
 Three tools. Keep the surface small — MCP tool selection is driven by the model reading tool descriptions, and a large surface dilutes selection.
@@ -92,11 +100,13 @@ This keeps the whole stack self-hostable, and keeps the index composable with `l
 
 ## 6. Payment and security architecture
 
+Everything in this section describes choices made by *this* implementation. None of it is proposed as an MDF requirement, and `CONCEPT.md` open question 11 states explicitly that spend policy is outside the specification's scope. It is documented in this level of detail because a client that spends money autonomously in response to content fetched from the open internet is a genuinely new risk surface, and other implementors deserve a worked example to argue with rather than a blank page.
+
 This is a tool that spends money in response to content fetched from the open internet. The threat model is prompt injection, and it is not hypothetical: a page can be authored specifically to talk an agent into paying for it repeatedly, or into fetching a thousand priced URLs on an attacker-controlled domain.
 
 **Key custody.** The MCP server holds no signing key. It calls a signer sidecar over a local socket with a policy envelope, in the same shape as `acurast-signer`. The key is file-mounted into the signer only, never present in the gateway's environment or argv, and never visible in `docker inspect`. The gateway refuses to start if the signer is unreachable or the policy file is unset.
 
-**Policy, enforced in the signer, not the caller:**
+**Policy.** This implementation enforces, in the signer rather than the caller:
 
 - per-call maximum
 - per-session and per-rolling-window maximum
@@ -104,7 +114,7 @@ This is a tool that spends money in response to content fetched from the open in
 - domain allowlist / denylist
 - a global kill switch that survives restart
 
-**Human gate above threshold.** Any single payment above a configured amount, or any cumulative session spend above a configured amount, requires a two-step confirmation rather than a single agent-callable operation — request returns a token and a cooldown, confirm completes it. This is the same pattern as `librarian-mcp`'s delete tool, adopted for the same reason: an irreversible action initiated by a model on untrusted input should not be one call.
+**Human gate above threshold.** This implementation requires two-step confirmation for any single payment above a configured amount, or for any cumulative session spend above a configured amount, rather than permitting it as a single agent-callable operation: the request returns a token and a cooldown, and the confirm completes it. This is the same pattern as `librarian-mcp`'s delete tool, adopted for the same reason: an irreversible action initiated by a model on untrusted input should not be one call.
 
 **Ledger.** Append-only, on disk, one line per decision (paid / declined / gated), with URL, price, `source_bytes`, estimated saving, and policy verdict. This is both the user-facing value report and the forensic record if something goes wrong.
 
@@ -118,9 +128,9 @@ That data is the only evidence that will move publishers, and it is a byproduct 
 
 ## 8. The claim that needs hardening
 
-"Markdown is more token-efficient than HTML" is true only against *raw* HTML, and essentially every agent fetch stack already performs client-side HTML→markdown extraction for free. Stated naively, the 402 asks an agent to pay for something it believes it already has.
+`CONCEPT.md` now scopes this claim properly in its Problem section, and the client's job is to substantiate it empirically rather than restate it. The short version: "markdown is more token-efficient than HTML" holds against raw HTML and against boilerplate-heavy pages even after client-side extraction, but approaches zero on already-clean documentation. Stated without qualification, the 402 asks an agent to pay for something it may believe it already has.
 
-The defensible version, which the gateway should be able to demonstrate empirically:
+The gateway is the only component positioned to settle this with data rather than argument, because it sees both representations:
 
 1. **Wire and context both.** Server-side conversion means boilerplate never crosses the wire *or* enters the context window. Client-side extraction pays the download cost regardless.
 2. **Semantic authority.** The publisher decides what the content is. Navigation, advertising, consent banners and related-article rails are absent by construction, not by heuristic.
