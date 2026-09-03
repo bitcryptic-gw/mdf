@@ -6,7 +6,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
-### Added
+### Added — spec
 - **CONCEPT.md — Human Presence Verification subsection** added to the Content Signals section.
   Covers passkeys (WebAuthn/FIDO2) as the recommended human-presence primitive for `human_only`
   content tiers, the proposed passkey-attested payment-and-token flow, the structural argument for
@@ -32,7 +32,72 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Response Value Signalling: optional `savings` object in 402 (and optionally 200) markdown responses, reporting byte-size reduction between source HTML and served markdown, giving agents a concrete efficiency signal alongside price.
 - Response Value Signalling refinement: decoupled `source_bytes` as a standalone, conversion-independent size signal from the `savings` object, which remains specific to servers that perform markdown conversion.
 
-### Changed
+- **`MCP-GATEWAY.md`** — concept document for an MDF reference client: an MCP gateway providing
+  discovery, negotiation, 402 evaluation and budgeted payment for MCP-capable agent runtimes.
+  Covers the token-arbitrage pay decision built on `source_bytes`, a signed and mirrorable index
+  treated as an optional accelerator rather than a dependency, signer-sidecar payment key custody,
+  and the argument that the first thing worth testing is whether agents will select an MDF-aware
+  fetch tool at all. Concept stage; nothing built. Acknowledges 402index.io as prior art for the
+  discovery layer.
+
+- **`mdf-402.schema.json`** — JSON Schema (Draft 2020-12) for the `402 Payment Required` response
+  body, plus a corresponding **CONCEPT.md "The 402 Response Body" subsection**. Previously the 402
+  shape was described in prose only, which was tenable while MDF was supply-side but is not once a
+  consumer may spend money on the basis of it. Describes server output; does not constrain
+  consumers. Notable choices: decimal amounts as strings rather than JSON numbers, bounded numeric
+  fields throughout, a closed `payment.rail` enumeration, and a SHOULD that payment endpoints be
+  same-origin with the priced resource.
+
+- **CONCEPT.md — Open Question #10** (client conformance and tool selection). Whether MDF should
+  define a normative client profile at all. Records the position that a conformance profile authored
+  by the party shipping the only client is how a community proposal becomes a vendor specification,
+  and the empirical unknown beneath it — whether agent runtimes will select an MDF-aware fetch tool
+  over their built-in fetch. Deliberately unresolved.
+
+- **CONCEPT.md — Open Question #11** (spend policy scope). Explicit statement that budgets, caps,
+  rate limits, human confirmation thresholds and payment key custody are implementation and
+  deployment concerns, not specification concerns, so that the reference client's design is not read
+  as a specification extension.
+
+- **CONCEPT.md — "The compensation problem" subsection**, promoted from a single sentence
+  previously buried as a "secondary problem". Argues creator compensation as a leg of the proposal
+  independent of efficiency: it applies to every page regardless of how well that page converts, and
+  does not depend on markdown being smaller than HTML. Frames payment as an alternative to
+  enclosure — stay open and discoverable and be paid at the point of machine consumption, rather
+  than retreating behind a login and leaving the open web.
+
+### Changed — spec
+- **CONCEPT.md — efficiency claim rescoped.** The Problem section previously asserted a flat 5–10×
+  token overhead. That holds for agents feeding raw HTML into context, but most agent runtimes
+  already perform client-side HTML-to-markdown extraction, against which the saving is
+  content-dependent: substantial on boilerplate-heavy pages, substantial-but-different on
+  JS-rendered or table-dense pages where extraction fails silently, and near zero on already-clean
+  documentation. Reframes the universal benefit as determinism rather than compression. README
+  updated to match, including the micropayment row of the price table.
+
+- **CONCEPT.md — Response Value Signalling prohibition narrowed to servers.** The rule that
+  `source_bytes` and `savings` "must not be used to influence or justify price" now states
+  explicitly that it binds servers only. Consuming these fields to judge whether a price is worth
+  paying is their intended use, and the previous wording could be read as forbidding it.
+
+- **CONCEPT.md — Open Question #3** (rate limiting) cross-references client-side per-origin rate
+  caps as covering the compliant-agent case without a spec mechanism, narrowing the spec question.
+
+- **CONCEPT.md — Open Question #4** (update gaming) gains a paragraph on client-ledger churn
+  measurement: per-origin re-fetch frequency against payment frequency as a detection mechanism
+  requiring no origin cooperation and no spec mechanism. Argues against over-engineering the
+  spec-side mitigation before field data exists.
+
+- **CONCEPT.md — `X-MDF-Tokens` removed** from the Content Serving example and replaced with
+  `X-MDF-Source-Bytes`. The header presented an authoritative token count, contradicting the
+  Response Value Signalling rule that token counts are tokenizer-dependent and cannot be
+  authoritative for an arbitrary requesting agent.
+
+- **CONCEPT.md — "Reference Implementation" pluralised** to "Reference Implementations", with a
+  paragraph on the client at concept stage, and a new "What MDF Is Not" entry stating that MDF does
+  not depend on any particular client.
+
+### Changed — reference server
 - L402 payment verification: replaced stub with production implementation
   - Alby Hub REST API client for invoice creation and settlement verification
   - HMAC-bound macaroon signing with path scope, expiry, and nonce

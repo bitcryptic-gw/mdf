@@ -13,11 +13,29 @@
 
 The web was built for human eyes. HTML encodes visual layout, navigation chrome, advertising scaffolding, and JavaScript interactivity — none of which carries semantic value for an AI agent consuming content. Yet agents are now among the most frequent consumers of web content, and they pay a significant tax for this mismatch.
 
-A typical web page fetched by an agent contains 5–10× more tokens than the actual content it carries. One documented benchmark shows a Cloudflare blog post consuming 16,180 tokens as HTML versus 3,150 as markdown — an 80% overhead. At scale, across millions of agent fetches per day, this represents enormous computational waste and cost borne by AI operators, content consumers, and ultimately end users.
+A typical web page fetched by an agent contains 5–10× more tokens than the actual content it carries. One documented benchmark shows a Cloudflare blog post consuming 16,180 tokens as HTML versus 3,150 as markdown — an 80% overhead. For an agent that feeds raw HTML into its context window, that overhead is paid in full on every fetch, and at scale it represents enormous computational waste borne by AI operators, content consumers, and ultimately end users.
+
+This claim is worth stating precisely, because it is frequently overstated. Many agent runtimes already perform client-side HTML-to-markdown extraction before content reaches the model, and where that extraction succeeds, the context-window saving from a server-side markdown representation is small or nil. The size of the real saving depends on the content:
+
+- **Boilerplate-heavy pages** — news, commerce, marketing, anything carrying navigation chrome, advertising scaffolding, consent interstitials and related-content rails — retain a substantial saving even after client-side extraction, because heuristic extractors routinely keep or discard the wrong regions, and the full payload must be downloaded regardless of what is subsequently thrown away.
+- **JS-rendered, paginated, or table-dense pages** — where client-side extraction degrades silently or fails outright, returning truncated or garbled content that the agent has no way to identify as wrong.
+- **Already-clean documentation and static content** — where a competent client-side extractor arrives at substantially the same result, and the honest saving approaches zero.
+
+MDF's efficiency argument therefore holds for the wire in every case, since the HTML is never transferred at all, and for the context window where the content warrants it. What it offers universally is not compression but **determinism**: a canonical representation authored by the publisher, in which what counts as the content is declared rather than inferred.
 
 The deeper problem is architectural: **HTML is generated from a source of truth that is usually already markdown or structured text, then agents must reverse that transformation at significant cost.** This is wasteful by design.
 
-A secondary problem: content creators have no mechanism to express access intent, receive compensation for agent consumption of their work, or gate access to private or premium content — all without breaking the human browsing experience.
+### The compensation problem
+
+The second problem is independent of the first. It applies to every page regardless of how well that page converts, and it does not depend on markdown being smaller than HTML.
+
+Content creators have no mechanism to express access intent, to receive compensation for agent consumption of their work, or to gate premium material without breaking the human browsing experience. The prevailing outcome is that content is scraped, absorbed and propagated, with the value accruing to whoever aggregates it rather than to whoever wrote it.
+
+The established defence is the walled garden: put the work behind a login and a subscription, and accept that it becomes invisible to the open web. This protects the content but it is a blunt instrument. It excludes the casual reader, the citing author and the legitimate agent alike; it forces every publisher to operate an authentication and billing stack; and it removes the material from the commons entirely in order to stop it being taken for free.
+
+MDF proposes payment as the gate rather than enclosure. A price attached to a markdown endpoint lets a publisher remain open and discoverable while still being paid for machine consumption. At higher price points the same mechanism issues an access credential, giving a small publisher the practical equivalent of a subscription wall without building one. For agents, it converts a category of content that was previously unavailable at any price into content that can be lawfully purchased at the point of use.
+
+This is the leg of the proposal that holds where the efficiency argument does not. A page that a client-side extractor handles perfectly still leaves its author uncompensated.
 
 ---
 
@@ -79,10 +97,12 @@ Accept: text/markdown, text/html;q=0.9
 HTTP/1.1 200 OK
 Content-Type: text/markdown
 X-MDF-Version: 1
-X-MDF-Tokens: 847
+X-MDF-Source-Bytes: 48213
 X-MDF-Price: 0.0001
 X-MDF-Currency: USDC
 ```
+
+`X-MDF-Source-Bytes` carries the same value as the `source_bytes` field described under Response Value Signalling, exposed as a header for responses where a body-level field is not appropriate. Earlier drafts of this document showed an `X-MDF-Tokens` header here; it has been removed, because a server cannot produce an authoritative token count for a requesting agent whose tokenizer it does not know. Byte counts are verifiable and tokenizer-independent; token counts are not.
 
 The same URL serves both humans (HTML) and agents (markdown). No separate URL scheme or protocol is required — standard HTTP, standard content negotiation.
 
@@ -175,6 +195,24 @@ At high price points, payment transitions from a micropayment into an access tok
 
 This gives site operators a full authentication layer with no passwords, no OAuth, no API key management — payment is the credential issuance mechanism.
 
+### The 402 Response Body
+
+Until now the 402 flow has been described in prose only, and the only schematised artefact in this repo has been `/mdf.json`. That was tenable while MDF was a supply-side proposal. It is no longer, because the 402 body is the one part of the wire format that arrives at a consumer from an arbitrary origin and may cause that consumer to spend money.
+
+`mdf-402.schema.json` describes the JSON body a server emits alongside a `402 Payment Required` response to an `Accept: text/markdown` request. It is a description of server output, not a constraint on consumers — nothing in this specification requires a consumer to validate against it, and the schema exists so that those who choose to have something to validate against.
+
+Required fields are `mdf_version`, `resource`, `price` and `payment`. Optional fields include `auth_endpoint` (present where payment at this tier issues a credential rather than delivering content), `source_bytes` and `savings` as described below, and a heuristic `token_estimate` which, if present, must be accompanied by a `token_estimate_note` describing the method used.
+
+Three points warrant explanation rather than schema:
+
+**Amounts are strings.** `price.amount` is a decimal string, not a JSON number. Binary floating point cannot represent common decimal amounts exactly, and a payment protocol is the last place to accept that rounding.
+
+**Payment endpoints should be same-origin.** A server SHOULD declare a `payment.endpoint` on the same origin as the resource being priced. Where a server declares a cross-origin endpoint, it should expect some consumers to decline the offer: an instruction arriving from one origin directing payment to another is indistinguishable, from the consumer's position, from an injected instruction. Operators with a genuine need for a separate payment host — a shared billing service across several properties, for instance — should anticipate that this requires explicit configuration on the consumer side and should not assume it will work unattended. This interacts with open question 9 (broker and alternate content URLs), where the same trust boundary appears in a different guise.
+
+**Unrecognised rails should be declined, not attempted.** `payment.rail` is a closed enumeration. A consumer encountering a rail it does not recognise has no basis on which to construct a payment, and improvising one against an unknown scheme is strictly worse than declining and falling back to an unpriced fetch.
+
+Numeric fields in the schema are bounded. This is not pedantry: the values are supplied by the responding origin, and an implausible `source_bytes` fed into a client's own cost calculation is a cheap way to manipulate that client's spending decision.
+
 ### Response Value Signalling
 
 Two related but independent signals let agents make better-informed decisions about a resource, beyond price alone.
@@ -209,7 +247,9 @@ Byte-size reduction is the primary, defensible metric for `savings`: it is direc
 
 Implementations should measure `source_bytes` against the same rendered-HTML output the markdown conversion itself was run against (post-filter, post-shortcode-expansion, however the implementation's pipeline works), not raw unrendered source, so the comparison reflects what a human browser or naive scraper would actually receive.
 
-This is not a pricing mechanism and must not be used to influence or justify price — price remains governed entirely by the payment/402 flow described above. It is not a coverage or capability claim and has no relationship to `/mdf.json`, which continues to assert capability and mechanism only.
+This is not a pricing mechanism. A **server** must not use these values to influence or justify the price it sets — price remains governed entirely by the payment/402 flow described above. The prohibition applies to the server side only: these fields exist precisely so that a requesting agent can judge whether a stated price is worth paying, and consuming them for that purpose is their intended use, not a violation of it.
+
+Neither field is a coverage or capability claim, and neither has any relationship to `/mdf.json`, which continues to assert capability and mechanism only.
 
 ### Content Signals
 
@@ -335,10 +375,11 @@ This allows agents to make intelligent re-fetch decisions based on change type r
 - **Not a Cloudflare replacement.** MDF is infrastructure-agnostic. A Caddy plugin, an Nginx module, a Node middleware, or a CDN feature can all implement it.
 - **Not a DRM system.** MDF cannot prevent determined scrapers. It creates a standard, economic incentive for compliant behaviour and an audit trail for non-compliant behaviour.
 - **Not prescriptive about payment rails.** The spec defines the interface; x402 over EVM chains and L402 over Lightning are the natural first implementations, but any payment rail that can produce a verifiable payment proof is compatible.
+- **Not dependent on any particular client.** MDF is implemented by servers. A consumer needs only standard HTTP content negotiation to participate. The reference client described in `MCP-GATEWAY.md` is one convenience implementation, not a requirement, and not a gatekeeper.
 
 ---
 
-## Reference Implementation
+## Reference Implementations
 
 The reference implementation is a self-hostable Docker image (`bitcryptic/mdf-server`) available on Docker Hub. Source is at `bitcryptic-gw/mdf-reference-server`. It:
 
@@ -347,12 +388,14 @@ The reference implementation is a self-hostable Docker image (`bitcryptic/mdf-se
 - Handles `Accept: text/markdown` content negotiation
 - Integrates x402 payment verification against configurable EVM chains
 - Integrates L402 payment verification against a configurable Lightning node or LSP endpoint
-- Issues and validate bearer tokens for high-price-tier access
+- Issues and validates bearer tokens for high-price-tier access
 - Exposes a simple dashboard: fetch counts, earnings by rail, content signal summary
 
 Target stack: Bun + Caddy or standalone Bun HTTP server, Docker image for Unraid/standard Docker deployment, configuration via a single `mdf.yaml`.
 
 A hosted demo site is live at **https://mdf-demo.bitcryptic.com**, demonstrating all three payment tiers end-to-end across both payment rails.
+
+A reference **client** is at the concept stage: an MCP server that gives any MCP-capable agent runtime the ability to discover `/mdf.json`, negotiate for markdown, evaluate a 402 offer against the token cost of fetching the HTML instead, and pay within an operator-defined budget. The design is documented in `MCP-GATEWAY.md`. It is not built, and MDF does not require a client of any particular shape — see open questions 10 and 11.
 ---
 
 ## Relationship to BitCryptic Compute
@@ -369,8 +412,10 @@ The following are explicitly unresolved and intended to drive community discussi
 
 1. **Payment rail standardisation** — Should the spec recommend a default rail (x402 on Base? L402 on Lightning?), or remain fully agnostic? Agnosticism is cleaner but creates interoperability friction for agent implementors who must support multiple rails. A third rail, MPP (Machine Payments Protocol, Stripe/Tempo-facilitated session-based settlement), has emerged in the broader 402 ecosystem — MDF's rail-agnostic design accommodates it without spec changes but it is not yet formally in scope for v0.1.
 2. **Receipt verification** — How does a site verify payment without running a full node? For x402: trust a third-party RPC, run a light client, or accept signed payment proofs from a settlement layer. For L402: trust an LSP, run a lightweight Lightning node, or verify macaroon credentials independently.
-3. **Rate limiting and abuse** — A $0.00 endpoint is still reachable by abusive scrapers. Should MDF include a rate-limit signalling mechanism separate from price?
+3. **Rate limiting and abuse** — A $0.00 endpoint is still reachable by abusive scrapers. Should MDF include a rate-limit signalling mechanism separate from price? Note that this is only half a server-side problem: a well-behaved consumer enforcing its own per-origin call-rate caps addresses the compliant-agent case without any spec mechanism at all, leaving the spec question narrowed to what a server can usefully signal to consumers that are already inclined to listen. See `MCP-GATEWAY.md` §6 for how one client implementation approaches this, and open question 10 on whether the spec should have anything to say about consumers in the first place.
 4. **Update gaming and re-fetch incentives** — The content freshness and subscription model must not create economic incentives for content owners to manipulate change frequency or volume. Two distinct attack vectors exist: (a) *high-frequency trivial changes* — an owner makes constant minor edits to trigger agent re-fetches and repeated payments; (b) *deliberate large rewrites* — an owner makes sweeping content changes to reset the payment clock and justify a full re-fetch fee. Several mitigations are under consideration, none yet adopted as the canonical approach: a *time-window access model* where a paid fetch grants access to all updates within a defined window (e.g. 24 hours), making incremental change gaming economically irrational; a *change significance floor* expressed as a normalised `mdf:significance` score (0.0–1.0, computed server-side via diff) that agents can threshold to ignore low-value updates without fetching or paying; and a *feed-level subscription price* replacing per-fetch update pricing entirely, aligning owner incentives with producing genuinely useful content rather than churn. The time-window model is the current preferred direction for its simplicity and the fact that it makes gaming irrational by design rather than relying on detectable behaviour. Community input is sought before this is committed to the architecture.
+
+   A fourth avenue becomes available once MDF consumers exist in the field, and it is detection rather than prevention. A client maintaining a spend ledger — what it paid, for which resource, at what size, and when — can measure churn directly: per-origin re-fetch frequency against payment frequency, and whether paid re-fetches correlate with substantive change in the returned content. This requires no cooperation from the origin and no spec mechanism whatsoever. Its output is an operator-level decision to reduce or cease spending against an origin, which is a blunt remedy but a real one, and it is measurable by every client that pays. It does not replace the time-window model, which prevents rather than detects. It is noted here as an argument against over-engineering the spec-side mitigation before there is field data on whether gaming actually occurs at meaningful scale.
 5. **Markdown dialect** — Should MDF specify a markdown dialect (CommonMark, GFM) or remain agnostic? Agents benefit from predictability; authors benefit from flexibility.
 6. **Human access to paid content** — If `/premium/*` costs $1.00 per agent fetch, how does a human subscriber access it? MDF should not break human auth flows. Possible answer: price applies only to `Accept: text/markdown` requests; human HTML requests use existing auth (cookies, sessions) independently.
 
@@ -379,6 +424,10 @@ The following are explicitly unresolved and intended to drive community discussi
 8. **L402 token format compatibility** — 402index.io classifies L402 tokens by format (V2 TLV binary, V1 binary, V0 libmacaroons text, JSON, or unknown) and checks compatibility with the `lnget` client per BLIP-0026. The MDF reference implementation uses an HMAC-bound JSON token — simpler than libmacaroons, no additional dependencies, sufficient for the reference implementation. Whether MDF should specify or recommend a token format for agent ecosystem interoperability is unresolved. A more compatible format could improve out-of-the-box agent support; the current approach prioritises simplicity and auditability.
 
 9. **Broker/alternate content URL extension** — Should `/mdf.json` support declaring an alternate host where a third party serves a site's markdown on its behalf (e.g. a broker or CDN-like intermediary)? Pre-declaring the alternate `content_url` in `/mdf.json` solves *origin* trust (the redirect target is named by the same domain serving the discovery document, inheriting its DNS/TLS trust) but not *content integrity* once the markdown is fetched from the third party. Two non-exclusive approaches are under consideration: the broker signs the markdown payload (or its hash) with a key whose pubkey is pre-declared in `/mdf.json`, reusing the same attested-signing pattern used elsewhere for payment verification — the stronger guarantee, requiring key management on the broker's side; or content-hash pinning, where `/mdf.json` declares a hash of the current content and the agent checks the fetched markdown against it — simpler, but freshness-coupled to the origin keeping the hash current rather than an independent authority. Neither has been adopted; this extension has not been built.
+
+10. **Client conformance and tool selection** — Should MDF define a normative client profile at all? This specification describes publisher behaviour end to end and says nothing about consumers, which was a natural consequence of MDF having been supply-side only. Reference client work has now begun (see `MCP-GATEWAY.md`), which makes the question live — but we are not persuaded that it is the specification's place to constrain consumers, particularly while the only consumer implementation is written by the same authors. A conformance profile authored by the party shipping the sole client is how a community proposal becomes a vendor specification. There is also an unresolved empirical question underneath it: whether an agent runtime will reliably select an MDF-aware fetch tool in preference to its own built-in fetch. That depends on tool descriptions and runtime selection heuristics, not on anything a specification can mandate, and it is untested. Until it is tested, client conformance language would be specifying behaviour for a population that does not yet exist. Deliberately left open.
+
+11. **Spend policy scope** — Budgets, per-call and per-session caps, per-origin rate limits, human confirmation thresholds above a spend threshold, and payment key custody are all necessary for any consumer that spends money autonomously in response to untrusted input. None of them are MDF specification concerns. The specification defines the wire format and the payment flow; how an operator constrains their own agent's spending is an implementation and deployment matter, and MDF should not attempt to standardise it. This is stated explicitly so that the reference client's design decisions in `MCP-GATEWAY.md` are not read as specification extensions. If field experience later shows that some minimal interoperable expression of spend policy is genuinely needed — a way for a server to advertise, say, that it prices per-session rather than per-fetch — that would be a narrow addition arising from evidence, not the general policy framework described in the client document.
 
 ---
 

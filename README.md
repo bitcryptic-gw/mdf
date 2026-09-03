@@ -9,7 +9,7 @@
 
 ## The problem in one paragraph
 
-AI agents are now among the most frequent consumers of web content, yet the web serves them HTML — a format built for human eyes. Agents must strip navigation, ads, scripts, and layout markup to reach the content underneath, wasting 5–10× the tokens actually needed. MDF proposes a simple, open architecture to fix this: markdown as the canonical source, HTTP content negotiation for delivery, and an optional payment layer that doubles as access policy.
+AI agents are now among the most frequent consumers of web content, yet the web serves them HTML — a format built for human eyes. Most agents compensate by stripping navigation, ads, scripts and layout markup client-side. That works, until it doesn't: the result depends entirely on how well a given page yields to a heuristic extractor, and the page has to be downloaded in full either way. Meanwhile the person who wrote the content receives nothing for it. MDF proposes a simple, open architecture addressing both halves: markdown as the canonical source, HTTP content negotiation for delivery, and an optional payment layer that doubles as access policy — giving creators a way to be paid for agent consumption of their work rather than watching it scraped and propagated for free.
 
 ## What MDF proposes
 
@@ -18,12 +18,18 @@ AI agents are now among the most frequent consumers of web content, yet the web 
 - **Structured discovery** — `/mdf.json` advertises capabilities, pricing, and content signals in a machine-readable format that agents can query before fetching
 - **Price as access policy** — a single price field unifies open access, micropayment, and private/authenticated access into one continuous spectrum, using the x402 (EVM/stablecoin) and L402 (Bitcoin/Lightning) payment standards
 
+## Two arguments, not one
+
+**Efficiency, where it applies.** Serving markdown means the HTML never crosses the wire. Whether it also saves context-window tokens depends on the page: boilerplate-heavy commercial and editorial pages retain a large saving even against a good client-side extractor, while clean documentation may save almost nothing. Where MDF is unconditionally better is determinism — the publisher declares what the content is, rather than an extractor guessing, so JS-rendered, paginated and table-dense pages stop failing silently.
+
+**Compensation, always.** This half doesn't depend on markdown being smaller. Today a creator's options are to be scraped for free or to retreat behind a login and disappear from the open web. MDF offers a third: stay open and discoverable, and be paid at the point of machine consumption. At higher price tiers the same payment mechanism issues an access credential, giving a small publisher the practical equivalent of a subscription wall without operating one — and giving agents a lawful route to content that was previously unavailable at any price.
+
 ## How the price spectrum works
 
 | Price | What it means |
 |-------|--------------|
 | `$0.00` | Open — serve immediately, no payment required |
-| `$0.0001` | Micropayment — small per-fetch fee offsets creator costs; cheaper for AI operators than fetching and parsing HTML |
+| `$0.0001` | Micropayment — small per-fetch fee offsets creator costs; on boilerplate-heavy pages, typically cheaper for AI operators than downloading and extracting the HTML |
 | `$1.00+` | Premium — meaningful payment for gated content |
 | `$100.00+` | Private — payment triggers an auth token issuance rather than immediate delivery |
 
@@ -34,6 +40,10 @@ Servers performing on-server markdown conversion may also report the size reduct
 → [CONCEPT.md](./CONCEPT.md)
 
 The concept document covers the full architecture, existing partial solutions, open questions, and the reference implementation plan.
+
+→ [MCP-GATEWAY.md](./MCP-GATEWAY.md)
+
+A concept document for an MDF reference *client*: an MCP gateway that lets any MCP-capable agent runtime discover, negotiate, evaluate and pay for MDF content. Concept stage, not built.
 
 ## Current status
 
@@ -47,6 +57,8 @@ The concept document covers the full architecture, existing partial solutions, o
 - [x] Validator CLI — `bitcryptic-gw/mdf-validator`
 - [ ] On-chain x402 payment verification (stub → production)
 - [x] Lightning invoice verification for L402 (stub → production)
+- [x] `mdf-402.schema.json` — JSON Schema for the 402 response body
+- [ ] Reference client — MDF MCP gateway (concept published, not built)
 
 ## Live Demo
 
