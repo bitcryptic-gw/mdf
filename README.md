@@ -82,6 +82,9 @@ curl -H "Accept: text/markdown" https://mdf-demo.bitcryptic.com/docs/getting-sta
 # Paid content — returns 402 with payment instructions
 curl -H "Accept: text/markdown" https://mdf-demo.bitcryptic.com/premium/deep-dive
 
+# Micropayment tier over Lightning — returns 402 with an L402 invoice
+curl -H "Accept: text/markdown" https://mdf-demo.bitcryptic.com/micropayment/intro
+
 # Private content — returns 402 with auth endpoint hint
 curl https://mdf-demo.bitcryptic.com/private/internals
 
