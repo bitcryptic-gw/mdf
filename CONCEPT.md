@@ -13,7 +13,7 @@
 
 The web was built for human eyes. HTML encodes visual layout, navigation chrome, advertising scaffolding, and JavaScript interactivity — none of which carries semantic value for an AI agent consuming content. Yet agents are now among the most frequent consumers of web content, and they pay a significant tax for this mismatch.
 
-A typical web page fetched by an agent contains 5–10× more tokens than the actual content it carries. One documented benchmark shows a Cloudflare blog post consuming 16,180 tokens as HTML versus 3,150 as markdown — an 80% overhead. For an agent that feeds raw HTML into its context window, that overhead is paid in full on every fetch, and at scale it represents enormous computational waste borne by AI operators, content consumers, and ultimately end users.
+A typical web page fetched by an agent contains 5–10× more tokens than the actual content it carries. One documented benchmark shows a Cloudflare blog post consuming 16,180 tokens as HTML versus 3,150 as markdown — an 80% reduction, or roughly 5× the tokens for the same content. For an agent that feeds raw HTML into its context window, that overhead is paid in full on every fetch, and at scale it represents enormous computational waste borne by AI operators, content consumers, and ultimately end users.
 
 This claim is worth stating precisely, because it is frequently overstated. Many agent runtimes already perform client-side HTML-to-markdown extraction before content reaches the model, and where that extraction succeeds, the context-window saving from a server-side markdown representation is small or nil. The size of the real saving depends on the content:
 
