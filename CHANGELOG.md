@@ -97,6 +97,23 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   paragraph on the client at concept stage, and a new "What MDF Is Not" entry stating that MDF does
   not depend on any particular client.
 
+- **`mdf-402.schema.json` corrected against emitted output.** The schema as first added described an
+  assumed 402 shape rather than the shape the reference server emits, and the live demo body failed
+  validation against it. Rewritten from the observed response: the invented top-level `price` object
+  removed in favour of the implemented `payment.amount` / `.currency` / `.chain`; root `required`
+  reduced to `payment` alone; `mdf_version` made optional and documented as header-borne
+  (`x-mdf-version`) with the version pattern loosened to accept a bare major; `payment.rail` demoted
+  from required to optional with chain-inference documented as the current fallback; `nonce` renamed
+  `session_nonce`; and `error`, `reason`, `accepted_chains` and `accepted_currencies` schematised
+  rather than passing silently through open `additionalProperties`. `resource` and
+  `payment.expires_at` are retained as optional and marked not-yet-emitted, with rationale in
+  CONCEPT.md. The schema description now notes that `format` is annotation-only in Draft 2020-12
+  absent a registered format plugin, and that the paired `pattern` is the load-bearing constraint.
+
+- **CONCEPT.md — "The 402 Response Body" subsection corrected** to match. Adds a note that the
+  `payment` object mixes resource-scoped offer fields with site-scoped capability fields, and that
+  `accepted_chains` must not be read as rails available for the resource at hand.
+
 ### Changed — reference server
 - L402 payment verification: replaced stub with production implementation
   - Alby Hub REST API client for invoice creation and settlement verification
