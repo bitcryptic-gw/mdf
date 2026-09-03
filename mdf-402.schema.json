@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bitcryptic-gw/mdf/mdf-402.schema.json",
+  "title": "MDF 402 Payment Required response body",
+  "description": "Normative description of the JSON body a server emits with a 402 Payment Required response to an Accept: text/markdown request. Describes what a server emits; it does not constrain what a consumer does with it.",
+  "type": "object",
+  "required": ["mdf_version", "resource", "price", "payment"],
+  "additionalProperties": true,
+  "properties": {
+    "mdf_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "description": "MDF version this response conforms to."
+    },
+    "resource": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https?://",
+      "maxLength": 2048,
+      "description": "Absolute URL of the resource being priced. Echoes the requested URL."
+    },
+    "price": { "$ref": "#/$defs/price" },
+    "payment": { "$ref": "#/$defs/payment" },
+    "auth_endpoint": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://",
+      "maxLength": 2048,
+      "description": "Present when payment at this price tier issues a bearer credential rather than delivering content immediately."
+    },
+    "source_bytes": { "$ref": "#/$defs/byteCount" },
+    "savings": { "$ref": "#/$defs/savings" },
+    "token_estimate": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000000000,
+      "description": "Optional heuristic token estimate. Never authoritative. If present, token_estimate_note MUST also be present."
+    },
+    "token_estimate_note": {
+      "type": "string",
+      "maxLength": 512,
+      "description": "Description of the estimation method, e.g. 'chars/4 approximation'."
+    }
+  },
+  "dependentRequired": {
+    "token_estimate": ["token_estimate_note"]
+  },
+  "$defs": {
+    "byteCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1099511627776,
+      "description": "A byte length. Bounded to reject implausible values."
+    },
+    "price": {
+      "type": "object",
+      "required": ["amount"],
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "type": "string",
+          "pattern": "^[0-9]{1,12}(\\.[0-9]{1,8})?$",
+          "description": "Decimal amount as a string, to avoid float representation error. Non-negative."
+        },
+        "currency": {
+          "type": ["string", "null"],
+          "maxLength": 16,
+          "description": "Currency or asset symbol, e.g. USDC, BTC. Null for zero-price responses."
+        },
+        "chain": {
+          "type": ["string", "null"],
+          "maxLength": 32,
+          "description": "Settlement network, e.g. base, ethereum, lightning."
+        }
+      }
+    },
+    "payment": {
+      "type": "object",
+      "required": ["rail", "endpoint"],
+      "additionalProperties": true,
+      "properties": {
+        "rail": {
+          "type": "string",
+          "enum": ["x402", "l402", "mpp"],
+          "description": "Payment rail this offer is denominated in. Consumers encountering an unrecognised value are expected to decline rather than attempt it."
+        },
+        "endpoint": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://",
+          "maxLength": 2048,
+          "description": "Where payment is submitted or verified. SHOULD be same-origin with `resource`; see notes in CONCEPT.md."
+        },
+        "recipient": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "Rail-specific payee identifier: EVM address for x402, node pubkey or LSP identifier for l402."
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "RFC 3339 timestamp after which this offer is no longer valid."
+        },
+        "nonce": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "Opaque value binding a subsequent payment proof to this specific offer."
+        },
+        "invoice": {
+          "type": "string",
+          "maxLength": 4096,
+          "description": "L402 only. BOLT11 Lightning invoice."
+        },
+        "macaroon": {
+          "type": "string",
+          "maxLength": 8192,
+          "description": "L402 only. Bearer credential presented alongside the payment preimage."
+        }
+      }
+    },
+    "savings": {
+      "type": "object",
+      "required": ["source_bytes", "markdown_bytes", "reduction_pct"],
+      "additionalProperties": false,
+      "properties": {
+        "source_bytes": { "$ref": "#/$defs/byteCount" },
+        "markdown_bytes": { "$ref": "#/$defs/byteCount" },
+        "reduction_pct": {
+          "type": "number",
+          "minimum": -1000,
+          "maximum": 100,
+          "description": "(1 - markdown_bytes / source_bytes) * 100, one decimal place. May be negative where conversion increases size."
+        }
+      }
+    }
+  }
+}
