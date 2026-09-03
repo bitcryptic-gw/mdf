@@ -94,7 +94,7 @@ The demo site exercises every payment tier and the full auth-via-payment flow. T
 ## Ecosystem
 
 ### MDF Analytics for WordPress
-A WordPress plugin that tracks AI agent traffic and `Accept: text/markdown` requests to your site, with a dashboard showing estimated earnings from MDF-enabled content. Phase 1 of a planned full MDF integration for WordPress including wallet connection and automatic markdown generation.
+A WordPress plugin that tracks AI agent traffic and `Accept: text/markdown` requests to your site, with a dashboard showing estimated earnings from MDF-enabled content. Since v0.1.4 it also serves markdown natively: published posts and pages are pre-converted to CommonMark and returned at the same URL to agents that negotiate for them. Wallet connection and paid markdown remain future work.
 
 → [bitcryptic-gw/mdf-analytics-wp](https://github.com/bitcryptic-gw/mdf-analytics-wp)
 
