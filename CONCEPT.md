@@ -13,11 +13,29 @@
 
 The web was built for human eyes. HTML encodes visual layout, navigation chrome, advertising scaffolding, and JavaScript interactivity — none of which carries semantic value for an AI agent consuming content. Yet agents are now among the most frequent consumers of web content, and they pay a significant tax for this mismatch.
 
-A typical web page fetched by an agent contains 5–10× more tokens than the actual content it carries. One documented benchmark shows a Cloudflare blog post consuming 16,180 tokens as HTML versus 3,150 as markdown — an 80% overhead. At scale, across millions of agent fetches per day, this represents enormous computational waste and cost borne by AI operators, content consumers, and ultimately end users.
+A typical web page fetched by an agent contains 5–10× more tokens than the actual content it carries. One documented benchmark shows a Cloudflare blog post consuming 16,180 tokens as HTML versus 3,150 as markdown — an 80% overhead. For an agent that feeds raw HTML into its context window, that overhead is paid in full on every fetch, and at scale it represents enormous computational waste borne by AI operators, content consumers, and ultimately end users.
+
+This claim is worth stating precisely, because it is frequently overstated. Many agent runtimes already perform client-side HTML-to-markdown extraction before content reaches the model, and where that extraction succeeds, the context-window saving from a server-side markdown representation is small or nil. The size of the real saving depends on the content:
+
+- **Boilerplate-heavy pages** — news, commerce, marketing, anything carrying navigation chrome, advertising scaffolding, consent interstitials and related-content rails — retain a substantial saving even after client-side extraction, because heuristic extractors routinely keep or discard the wrong regions, and the full payload must be downloaded regardless of what is subsequently thrown away.
+- **JS-rendered, paginated, or table-dense pages** — where client-side extraction degrades silently or fails outright, returning truncated or garbled content that the agent has no way to identify as wrong.
+- **Already-clean documentation and static content** — where a competent client-side extractor arrives at substantially the same result, and the honest saving approaches zero.
+
+MDF's efficiency argument therefore holds for the wire in every case, since the HTML is never transferred at all, and for the context window where the content warrants it. What it offers universally is not compression but **determinism**: a canonical representation authored by the publisher, in which what counts as the content is declared rather than inferred.
 
 The deeper problem is architectural: **HTML is generated from a source of truth that is usually already markdown or structured text, then agents must reverse that transformation at significant cost.** This is wasteful by design.
 
-A secondary problem: content creators have no mechanism to express access intent, receive compensation for agent consumption of their work, or gate access to private or premium content — all without breaking the human browsing experience.
+### The compensation problem
+
+The second problem is independent of the first. It applies to every page regardless of how well that page converts, and it does not depend on markdown being smaller than HTML.
+
+Content creators have no mechanism to express access intent, to receive compensation for agent consumption of their work, or to gate premium material without breaking the human browsing experience. The prevailing outcome is that content is scraped, absorbed and propagated, with the value accruing to whoever aggregates it rather than to whoever wrote it.
+
+The established defence is the walled garden: put the work behind a login and a subscription, and accept that it becomes invisible to the open web. This protects the content but it is a blunt instrument. It excludes the casual reader, the citing author and the legitimate agent alike; it forces every publisher to operate an authentication and billing stack; and it removes the material from the commons entirely in order to stop it being taken for free.
+
+MDF proposes payment as the gate rather than enclosure. A price attached to a markdown endpoint lets a publisher remain open and discoverable while still being paid for machine consumption. At higher price points the same mechanism issues an access credential, giving a small publisher the practical equivalent of a subscription wall without building one. For agents, it converts a category of content that was previously unavailable at any price into content that can be lawfully purchased at the point of use.
+
+This is the leg of the proposal that holds where the efficiency argument does not. A page that a client-side extractor handles perfectly still leaves its author uncompensated.
 
 ---
 
@@ -79,10 +97,12 @@ Accept: text/markdown, text/html;q=0.9
 HTTP/1.1 200 OK
 Content-Type: text/markdown
 X-MDF-Version: 1
-X-MDF-Tokens: 847
+X-MDF-Source-Bytes: 48213
 X-MDF-Price: 0.0001
 X-MDF-Currency: USDC
 ```
+
+`X-MDF-Source-Bytes` carries the same value as the `source_bytes` field described under Response Value Signalling, exposed as a header for responses where a body-level field is not appropriate. Earlier drafts of this document showed an `X-MDF-Tokens` header here; it has been removed, because a server cannot produce an authoritative token count for a requesting agent whose tokenizer it does not know. Byte counts are verifiable and tokenizer-independent; token counts are not.
 
 The same URL serves both humans (HTML) and agents (markdown). No separate URL scheme or protocol is required — standard HTTP, standard content negotiation.
 
