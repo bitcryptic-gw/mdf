@@ -131,11 +131,24 @@ Example `/mdf.json`:
       "/premium/*": { "amount": "1.0000", "currency": "USDC", "chain": "base" }
     }
   },
-  "auth_endpoint": "https://example.com/mdf/auth",
+  "payment": {
+    "endpoint": "https://example.com/mdf/pay",
+    "accepted_chains": ["base", "lightning"],
+    "accepted_currencies": ["USDC", "BTC"]
+  },
+  "auth": {
+    "endpoint": "https://example.com/mdf/auth",
+    "token_ttl_seconds": 86400,
+    "price_threshold": "10.00"
+  },
   "content_signals": {
     "ai_train": false,
     "ai_input": true,
     "search": true
+  },
+  "formats": {
+    "dialect": "commonmark",
+    "frontmatter": true
   },
   "llms_txt": "https://example.com/llms.txt"
 }
