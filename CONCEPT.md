@@ -375,10 +375,11 @@ This allows agents to make intelligent re-fetch decisions based on change type r
 - **Not a Cloudflare replacement.** MDF is infrastructure-agnostic. A Caddy plugin, an Nginx module, a Node middleware, or a CDN feature can all implement it.
 - **Not a DRM system.** MDF cannot prevent determined scrapers. It creates a standard, economic incentive for compliant behaviour and an audit trail for non-compliant behaviour.
 - **Not prescriptive about payment rails.** The spec defines the interface; x402 over EVM chains and L402 over Lightning are the natural first implementations, but any payment rail that can produce a verifiable payment proof is compatible.
+- **Not dependent on any particular client.** MDF is implemented by servers. A consumer needs only standard HTTP content negotiation to participate. The reference client described in `MCP-GATEWAY.md` is one convenience implementation, not a requirement, and not a gatekeeper.
 
 ---
 
-## Reference Implementation
+## Reference Implementations
 
 The reference implementation is a self-hostable Docker image (`bitcryptic/mdf-server`) available on Docker Hub. Source is at `bitcryptic-gw/mdf-reference-server`. It:
 
@@ -387,12 +388,14 @@ The reference implementation is a self-hostable Docker image (`bitcryptic/mdf-se
 - Handles `Accept: text/markdown` content negotiation
 - Integrates x402 payment verification against configurable EVM chains
 - Integrates L402 payment verification against a configurable Lightning node or LSP endpoint
-- Issues and validate bearer tokens for high-price-tier access
+- Issues and validates bearer tokens for high-price-tier access
 - Exposes a simple dashboard: fetch counts, earnings by rail, content signal summary
 
 Target stack: Bun + Caddy or standalone Bun HTTP server, Docker image for Unraid/standard Docker deployment, configuration via a single `mdf.yaml`.
 
 A hosted demo site is live at **https://mdf-demo.bitcryptic.com**, demonstrating all three payment tiers end-to-end across both payment rails.
+
+A reference **client** is at the concept stage: an MCP server that gives any MCP-capable agent runtime the ability to discover `/mdf.json`, negotiate for markdown, evaluate a 402 offer against the token cost of fetching the HTML instead, and pay within an operator-defined budget. The design is documented in `MCP-GATEWAY.md`. It is not built, and MDF does not require a client of any particular shape — see open questions 10 and 11.
 ---
 
 ## Relationship to BitCryptic Compute
