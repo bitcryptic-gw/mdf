@@ -52,11 +52,11 @@ A concept document for an MDF reference *client*: an MCP gateway that lets any M
 - [x] Reference implementation — `bitcryptic/mdf-server` on Docker Hub (`bitcryptic-gw/mdf-reference-server`)
 - [x] Demo site — https://mdf-demo.bitcryptic.com — live end-to-end demonstration of all three payment tiers
 - [x] x402 payment verification stub (EVM/stablecoin rail)
-- [x] L402 payment verification stub (Bitcoin/Lightning rail)
+- [x] L402 payment verification — live Lightning invoice settlement (Bitcoin/Lightning rail)
 - [x] Atom feed with `mdf:change_type` namespace — live at https://mdf-demo.bitcryptic.com/feed.xml
 - [x] Validator CLI — `bitcryptic-gw/mdf-validator`
 - [ ] On-chain x402 payment verification (stub → production)
-- [x] Lightning invoice verification for L402 (stub → production)
+- [x] Lightning invoice verification for L402 — production, real transactions settled
 - [x] `mdf-402.schema.json` — JSON Schema for the 402 response body
 - [ ] Reference client — MDF MCP gateway (concept published, not built)
 
@@ -89,7 +89,7 @@ curl https://mdf-demo.bitcryptic.com/private/internals
 curl https://mdf-demo.bitcryptic.com/feed.xml
 ```
 
-The demo site exercises all three payment tiers and the full auth-via-payment flow. Both x402 (EVM) and L402 (Lightning) payment rails are stubbed — no real transaction is required to explore the protocol behaviour.
+The demo site exercises every payment tier and the full auth-via-payment flow. The L402 (Lightning) rail performs real invoice verification — a `/micropayment/` fetch settles a genuine Lightning payment. The x402 (EVM) rail is still stubbed, so the `/premium/` and `/private/` tiers can be explored without an on-chain transaction.
 
 ## Ecosystem
 
