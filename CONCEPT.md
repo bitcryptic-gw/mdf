@@ -200,8 +200,8 @@ A third rail — **MPP (Machine Payments Protocol, via Stripe/Tempo)** — has e
 
 At high price points, payment transitions from a micropayment into an access token request. The flow:
 
-1. Agent fetches `/mdf.json`, sees price of `$X` for a section
-2. Agent sends payment transaction to the site's declared wallet/payment endpoint
+1. Agent requests the resource with `Accept: text/markdown` and receives a `402` stating a price of `$X`, a payment endpoint, and (where this tier issues a credential) an auth endpoint
+2. Agent sends payment transaction to the payment endpoint named in that response
 3. Site verifies payment (on-chain receipt for x402; Lightning invoice settlement for L402) and issues a time-limited bearer token
 4. Agent includes bearer token in subsequent `Authorization` header for markdown fetches
 5. Site serves markdown to token-bearing requests without further payment per fetch (or per session, per volume — owner configurable)
@@ -292,7 +292,7 @@ are indistinguishable from humans at the token layer alone.
 For `human_only` content tiers where a meaningful price is set, we think the right pattern is to
 require a WebAuthn assertion as part of the payment and token-issuance flow:
 
-1. Agent fetches `/mdf.json`, sees `human_only: true` for the requested section and a non-zero price.
+1. Agent sees `human_only: true` for the requested section in `/mdf.json`, requests the resource, and receives a `402` stating a non-zero price.
 2. Agent surfaces this to its human operator — it cannot satisfy the requirement autonomously.
 3. Human authenticates with their passkey, submits payment, and receives a time-limited bearer token
    carrying the WebAuthn attestation.
