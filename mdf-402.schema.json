@@ -22,7 +22,7 @@
       "format": "uri",
       "pattern": "^https?://",
       "maxLength": 2048,
-      "description": "Absolute URL of the resource being priced. Not currently emitted by the reference server; see the 402 Response Body section of CONCEPT.md for why it is recommended."
+      "description": "Absolute URL of the resource being priced, including query string. Emitted by the reference server. This is the one field in a 402 a consumer cannot reconstruct once the response is held out of band."
     },
     "mdf_version": {
       "type": "string",
@@ -92,7 +92,7 @@
         "rail": {
           "type": "string",
           "enum": ["x402", "l402", "mpp"],
-          "description": "Optional explicit payment rail. Not currently emitted by the reference server, which leaves rail to be inferred from `chain`. Where absent, a consumer must map chain to rail itself; where present, it removes that inference. A consumer encountering an unrecognised value is expected to decline rather than improvise."
+          "description": "Explicit payment rail. Emitted by the reference server, derived from the same branch that selects the payment verifier. Remains optional in this schema: servers omitting it leave a consumer to map `chain` to a rail itself, which is workable today but ambiguous where two rails share a settlement network. A consumer encountering an unrecognised value is expected to decline rather than improvise."
         },
         "accepted_chains": {
           "type": "array",
@@ -119,7 +119,7 @@
         "expires_at": {
           "type": "string",
           "format": "date-time",
-          "description": "RFC 3339 timestamp after which this offer is no longer valid. Not currently emitted by the reference server; recommended for any consumer that may queue or defer a payment."
+          "description": "RFC 3339 timestamp after which this offer is no longer valid. Emitted by the reference server, derived from the same validity window the `session_nonce` is bound to. Consumers that queue or defer a payment should honour it rather than assuming an offer stands indefinitely."
         },
         "invoice": {
           "type": "string",
