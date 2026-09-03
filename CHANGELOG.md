@@ -114,6 +114,27 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `payment` object mixes resource-scoped offer fields with site-scoped capability fields, and that
   `accepted_chains` must not be read as rails available for the resource at hand.
 
+- **`mdf-402.schema.json` and CONCEPT.md updated to reflect the deployed implementation.** The
+  `resource`, `payment.rail` and `payment.expires_at` field descriptions no longer state that the
+  reference server does not emit them, and the CONCEPT.md paragraphs on rail inference and
+  not-yet-implemented fields have been rewritten accordingly. `payment.rail` remains optional in the
+  schema: emitting it is encouraged, not required, since chain-to-rail inference remains workable for
+  servers that do not. `mdf_version` is unchanged and is still carried as the `x-mdf-version` header
+  rather than a body field.
+
+### Added — reference server
+
+- **402 response body completeness.** `build402Response` now emits three additional fields, all
+  strictly additive — every previously emitted field retains its name, type and value.
+  - `resource` — absolute request URL including query string, falling back to `site.url` plus path.
+    The only field in a 402 a consumer cannot reconstruct once the response is held out of band.
+  - `payment.expires_at` — RFC 3339, derived from the same `nonceExpiryMs` the `session_nonce` is
+    already bound to (~3600 s as configured). Surfaces an existing validity window rather than
+    introducing a new one.
+  - `payment.rail` — via a new `railForChain()` mirroring verifier selection, so the declared rail
+    cannot drift from the branch that actually verifies the payment. `base`/`ethereum` to `x402`,
+    `lightning` to `l402`.
+
 ### Changed — reference server
 - L402 payment verification: replaced stub with production implementation
   - Alby Hub REST API client for invoice creation and settlement verification
