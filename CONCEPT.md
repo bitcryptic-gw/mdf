@@ -195,6 +195,24 @@ At high price points, payment transitions from a micropayment into an access tok
 
 This gives site operators a full authentication layer with no passwords, no OAuth, no API key management — payment is the credential issuance mechanism.
 
+### The 402 Response Body
+
+Until now the 402 flow has been described in prose only, and the only schematised artefact in this repo has been `/mdf.json`. That was tenable while MDF was a supply-side proposal. It is no longer, because the 402 body is the one part of the wire format that arrives at a consumer from an arbitrary origin and may cause that consumer to spend money.
+
+`mdf-402.schema.json` describes the JSON body a server emits alongside a `402 Payment Required` response to an `Accept: text/markdown` request. It is a description of server output, not a constraint on consumers — nothing in this specification requires a consumer to validate against it, and the schema exists so that those who choose to have something to validate against.
+
+Required fields are `mdf_version`, `resource`, `price` and `payment`. Optional fields include `auth_endpoint` (present where payment at this tier issues a credential rather than delivering content), `source_bytes` and `savings` as described below, and a heuristic `token_estimate` which, if present, must be accompanied by a `token_estimate_note` describing the method used.
+
+Three points warrant explanation rather than schema:
+
+**Amounts are strings.** `price.amount` is a decimal string, not a JSON number. Binary floating point cannot represent common decimal amounts exactly, and a payment protocol is the last place to accept that rounding.
+
+**Payment endpoints should be same-origin.** A server SHOULD declare a `payment.endpoint` on the same origin as the resource being priced. Where a server declares a cross-origin endpoint, it should expect some consumers to decline the offer: an instruction arriving from one origin directing payment to another is indistinguishable, from the consumer's position, from an injected instruction. Operators with a genuine need for a separate payment host — a shared billing service across several properties, for instance — should anticipate that this requires explicit configuration on the consumer side and should not assume it will work unattended. This interacts with open question 9 (broker and alternate content URLs), where the same trust boundary appears in a different guise.
+
+**Unrecognised rails should be declined, not attempted.** `payment.rail` is a closed enumeration. A consumer encountering a rail it does not recognise has no basis on which to construct a payment, and improvising one against an unknown scheme is strictly worse than declining and falling back to an unpriced fetch.
+
+Numeric fields in the schema are bounded. This is not pedantry: the values are supplied by the responding origin, and an implausible `source_bytes` fed into a client's own cost calculation is a cheap way to manipulate that client's spending decision.
+
 ### Response Value Signalling
 
 Two related but independent signals let agents make better-informed decisions about a resource, beyond price alone.
