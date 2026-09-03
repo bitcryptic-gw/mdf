@@ -229,7 +229,9 @@ Byte-size reduction is the primary, defensible metric for `savings`: it is direc
 
 Implementations should measure `source_bytes` against the same rendered-HTML output the markdown conversion itself was run against (post-filter, post-shortcode-expansion, however the implementation's pipeline works), not raw unrendered source, so the comparison reflects what a human browser or naive scraper would actually receive.
 
-This is not a pricing mechanism and must not be used to influence or justify price — price remains governed entirely by the payment/402 flow described above. It is not a coverage or capability claim and has no relationship to `/mdf.json`, which continues to assert capability and mechanism only.
+This is not a pricing mechanism. A **server** must not use these values to influence or justify the price it sets — price remains governed entirely by the payment/402 flow described above. The prohibition applies to the server side only: these fields exist precisely so that a requesting agent can judge whether a stated price is worth paying, and consuming them for that purpose is their intended use, not a violation of it.
+
+Neither field is a coverage or capability claim, and neither has any relationship to `/mdf.json`, which continues to assert capability and mechanism only.
 
 ### Content Signals
 
