@@ -110,15 +110,17 @@ The same URL serves both humans (HTML) and agents (markdown). No separate URL sc
 
 ### Discovery
 
-MDF extends the llms.txt convention. An MDF-compliant site exposes:
+MDF extends the llms.txt convention. An MDF-compliant site serves:
 
-- `/llms.txt` — standard llms.txt index (backwards compatible)
+- `/llms.txt` — standard llms.txt index (SHOULD)
 - `/mdf.json` — machine-readable MDF capability document, advertising:
   - Supported content types
   - Default and per-section pricing
   - Accepted payment methods/chains
   - Auth token endpoint (if applicable)
   - Site-level content signals (training consent, search consent, etc.)
+
+`/mdf.json` is MDF's canonical discovery document. Serving `/llms.txt` is recommended (SHOULD), not required: requiring it would make MDF conformance depend on a second, external convention MDF does not own and cannot version. Recommending it preserves interoperability with the llms.txt ecosystem without coupling conformance to it.
 
 Example `/mdf.json`:
 
@@ -167,6 +169,10 @@ Those questions are answered at request time by the actual response to an `Accep
 This design keeps `/mdf.json` static and reliable. Keeping it in sync with dynamic per-resource state — a backfill in progress, a newly published post not yet converted, per-post or per-tier pricing — would require continuous rewriting of a document that is meant to describe infrastructure. The per-request response is already the correct source of truth for resource-level state, and `/mdf.json` should not duplicate it and risk drifting out of sync. This also aligns with how x402 and L402 work at the protocol level: a 402 response, not a pre-declared price schedule, is the standard's price-discovery mechanism.
 
 The one piece of information `/mdf.json` must state accurately — because it cannot be discovered per-request the way coverage and per-URL price can — is **mechanism**: which payment rails are accepted, and where the payment endpoint lives. An agent needs this before it can even attempt payment.
+
+### Validator Guidance
+
+Tools that validate MDF sites against this document SHOULD resolve the URLs they probe from the site's `/llms.txt`, falling back to the site root when `/llms.txt` is absent or lists nothing usable. This is guidance for tooling, not a requirement on servers. Probing a URL fabricated from a pricing glob — e.g. turning a free `/docs/**` tier into a probe of `/docs`, which may not exist — can fail a conformant site that has no page at the glob root. Validators SHOULD also probe only URLs on the target's own origin, ignoring any external URLs a `/llms.txt` happens to list.
 
 ### The Payment Spectrum
 
