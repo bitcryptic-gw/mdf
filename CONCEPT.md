@@ -462,6 +462,8 @@ The following are explicitly unresolved and intended to drive community discussi
 
 ---
 
+12. **402 on paths with no resource** — Under a non-zero default price, payment gating runs before content lookup, so a `402` is returned for paths with nothing behind them exactly as for paths that exist. An agent cannot distinguish "this exists and costs money" from "this does not exist" without paying, and the 402 body's `resource` field names a URL with no content behind it. This may be intended — under price-as-access-policy, a site is arguably asserting that machine access to anything under a priced origin has a price — but it is currently emergent behaviour rather than a stated position. The reference implementation exhibits it: any path under its non-zero default returns a 402 offer. The cost to an agent is a wasted or failed payment attempt per non-existent path, scaling with how many URLs an agent is willing to guess. Options range from declaring this the intended semantics, to a distinguished response for absent resources, to leaving it as is.
+
 ## How to Contribute
 
 This is an early-stage community proposal. Feedback, criticism, implementation experiments, and alternative approaches are all welcome.
