@@ -102,6 +102,8 @@ X-MDF-Price: 0.0001
 X-MDF-Currency: USDC
 ```
 
+Servers MUST emit an `X-MDF-Version` header on every response the MDF layer handles: the negotiated markdown response, the HTML rendering an MDF-aware server serves at the same URL, and any `402 Payment Required`. An agent needs a reliable way to identify the protocol it is talking to before it can act on price or payment instructions. The value is the **protocol** version — currently `1` — and is independent of the implementation's own release version.
+
 `X-MDF-Source-Bytes` carries the same value as the `source_bytes` field described under Response Value Signalling, exposed as a header for responses where a body-level field is not appropriate. Earlier drafts of this document showed an `X-MDF-Tokens` header here; it has been removed, because a server cannot produce an authoritative token count for a requesting agent whose tokenizer it does not know. Byte counts are verifiable and tokenizer-independent; token counts are not.
 
 The same URL serves both humans (HTML) and agents (markdown). No separate URL scheme or protocol is required — standard HTTP, standard content negotiation.
