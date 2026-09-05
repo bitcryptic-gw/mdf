@@ -110,10 +110,10 @@ The same URL serves both humans (HTML) and agents (markdown). No separate URL sc
 
 ### Discovery
 
-MDF extends the llms.txt convention. An MDF-compliant site serves:
+MDF extends the llms.txt convention. An MDF-compliant site serves two discovery documents:
 
 - `/llms.txt` — standard llms.txt index (SHOULD)
-- `/mdf.json` — machine-readable MDF capability document, advertising:
+- `/mdf.json` — machine-readable MDF capability document (MUST), advertising:
   - Supported content types
   - Default and per-section pricing
   - Accepted payment methods/chains
