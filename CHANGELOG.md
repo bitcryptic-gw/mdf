@@ -6,7 +6,10 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-12
+
 ### Added — spec
+- **`mdf-402.schema.json` — the x402 payment offer is now a strict superset of x402's `PaymentRequirements`.** Adds `pay_to`, `asset`, `scheme`, `max_timeout_seconds` and `extra` to the `payment` object, conditionally required when `rail: "x402"` via `allOf`/`if`/`then`, so a standard x402 facilitator's `/verify` and `/settle` endpoints can be called on these fields without a translation layer. `l402` and `mpp` offers are unaffected. Accompanied by a new CONCEPT.md "Facilitator Configuration" subsection, an x402-delegation rewrite of the Authentication via Payment flow, and open question 2 narrowed to L402 only (not renumbered).
 - **CONCEPT.md — Human Presence Verification subsection** added to the Content Signals section.
   Covers passkeys (WebAuthn/FIDO2) as the recommended human-presence primitive for `human_only`
   content tiers, the proposed passkey-attested payment-and-token flow, the structural argument for

@@ -2,7 +2,7 @@
 
 > A proposal for a web content architecture where markdown is the source of truth, agents are first-class citizens, and access policy is expressed through price.
 
-**Status:** Draft · Seeking community feedback  
+**Status:** Draft (v0.2.0) · Seeking community feedback  
 **Authors:** Gary Walker / [BitCryptic™](https://bitcryptic.com) · Graham Hall / [Slepner](https://slepner.com.au)
 
 ---
