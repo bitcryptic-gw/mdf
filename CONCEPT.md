@@ -210,11 +210,17 @@ At high price points, payment transitions from a micropayment into an access tok
 
 1. Agent requests the resource with `Accept: text/markdown` and receives a `402` stating a price of `$X`, a payment endpoint, and (where this tier issues a credential) an auth endpoint
 2. Agent sends payment transaction to the payment endpoint named in that response
-3. Site verifies payment (on-chain receipt for x402; Lightning invoice settlement for L402) and issues a time-limited bearer token
+3. Site verifies payment — for x402, by calling a standard x402 facilitator's `/verify` and (on success) `/settle` endpoints with the payload the client submitted; for L402, by confirming Lightning invoice settlement directly — and issues a time-limited bearer token
 4. Agent includes bearer token in subsequent `Authorization` header for markdown fetches
 5. Site serves markdown to token-bearing requests without further payment per fetch (or per session, per volume — owner configurable)
 
 This gives site operators a full authentication layer with no passwords, no OAuth, no API key management — payment is the credential issuance mechanism.
+
+### Facilitator Configuration
+
+Servers implementing the x402 rail delegate payment verification and settlement to an x402 **facilitator** — any service implementing the standard x402 `/verify` and `/settle` HTTP endpoints. MDF does not mandate a specific facilitator, hosting model, or trust architecture for it: an operator may run a self-hosted facilitator, use a third-party hosted one, or run their own verification logic that happens to expose a compliant `/verify`/`/settle` interface. This is a deliberate design choice: coupling MDF's spec to a specific facilitator implementation (including our own reference server's) would undermine the goal of MDF as a connective layer between existing open standards rather than a vendor-specific stack.
+
+The reference server's `[oracle]` configuration block from earlier drafts is renamed and reframed as `[facilitator]`, taking a facilitator base URL rather than a bespoke oracle endpoint and pubkey. This is a breaking configuration change for existing reference-server deployments — see the reference server's own release notes for migration guidance.
 
 ### The 402 Response Body
 
@@ -231,6 +237,8 @@ Five points warrant explanation rather than schema.
 **The `payment` object mixes two scopes.** `amount`, `currency` and `chain` describe *this offer for this resource*. `accepted_chains` and `accepted_currencies` describe *what the site accepts in general* — the same mechanism `/mdf.json` declares. Repeating site capability in the 402 saves a consumer a round trip and is worth keeping, but the two scopes are not distinguished structurally, and a consumer must not read `accepted_chains` as a set of rails available for the resource at hand. The offer is what `amount`, `currency` and `chain` say it is.
 
 **Rail is declared, but remains optional.** The reference server emits `payment.rail` alongside `chain`, derived from the same branch that selects the payment verifier rather than from a second mapping table. The field is nonetheless optional in the schema, because inferring rail from `chain` — `base` and `ethereum` implying x402, `lightning` implying L402 — is workable and was the only option available before this was implemented. That inference breaks the moment two rails share a settlement network, which MPP settling on an EVM chain would immediately cause, so servers are encouraged to declare rail explicitly and consumers should prefer the declared value where present.
+
+**For the x402 rail, the payment object is a strict superset of x402's `PaymentRequirements`.** Alongside MDF's own `amount`/`currency`/`chain` (kept for human readability and rail-agnostic display), servers offering x402 payment MUST also emit `pay_to`, `asset` (as the token's contract address, not a symbol), `scheme`, and `max_timeout_seconds` — the exact fields a standard x402 facilitator's `/verify` and `/settle` endpoints expect, so that verification can be delegated to any compliant facilitator without a translation layer. `extra` carries any scheme-specific data a facilitator needs (e.g. a Solana `exact` payment's fee payer) and is passed through opaquely by MDF servers rather than interpreted. This does not apply to `l402` or `mpp` offers, which have no equivalent concepts.
 
 **Payment endpoints should be same-origin.** A server SHOULD declare a `payment.endpoint` on the same origin as the resource being priced. Where a server declares a cross-origin endpoint, it should expect some consumers to decline the offer: an instruction arriving from one origin directing payment to another is indistinguishable, from the consumer's position, from an injected instruction. Operators with a genuine need for a separate payment host — a shared billing service across several properties — should anticipate that this requires explicit configuration on the consumer side rather than working unattended. The same trust boundary appears in a different guise in open question 9.
 
@@ -438,7 +446,7 @@ The following are explicitly unresolved and intended to drive community discussi
 
 1. **Payment rail standardisation** — Should the spec recommend a default rail (x402 on Base? L402 on Lightning?), or remain fully agnostic? Agnosticism is cleaner but creates interoperability friction for agent implementors who must support multiple rails. A third rail, MPP (Machine Payments Protocol, Stripe/Tempo-facilitated session-based settlement), has emerged in the broader 402 ecosystem — MDF's rail-agnostic design accommodates it without spec changes but it is not yet formally in scope for v0.1.
 
-2. **Receipt verification** — How does a site verify payment without running a full node? For x402: trust a third-party RPC, run a light client, or accept signed payment proofs from a settlement layer. For L402: trust an LSP, run a lightweight Lightning node, or verify macaroon credentials independently.
+2. **Receipt verification (L402)** — How does a site verify Lightning payment without running a full node? Trust an LSP, run a lightweight Lightning node, or verify macaroon credentials independently. (The equivalent question for x402 is resolved by the Facilitator Configuration section above: verification is delegated to a standard x402 facilitator's `/verify` endpoint, which handles on-chain confirmation on the server's behalf.)
 
 3. **Rate limiting and abuse** — A $0.00 endpoint is still reachable by abusive scrapers. Should MDF include a rate-limit signalling mechanism separate from price? Note that this is only half a server-side problem: a well-behaved consumer enforcing its own per-origin call-rate caps addresses the compliant-agent case without any spec mechanism at all, leaving the spec question narrowed to what a server can usefully signal to consumers that are already inclined to listen. See `MCP-GATEWAY.md` §6 for how one client implementation approaches this, and open question 10 on whether the spec should have anything to say about consumers in the first place.
 
