@@ -53,7 +53,7 @@ Several initiatives have addressed pieces of this problem, but none provide a co
 
 **L402** (formerly LSAT) is a complementary HTTP payment and authentication protocol built on Bitcoin's Lightning Network. It combines a Lightning invoice with a macaroon-based bearer credential, enabling sub-second, sub-cent micropayments without on-chain settlement latency. Like x402, L402 uses the `402 Payment Required` status code and is designed for machine-to-machine use. It is already supported by a growing ecosystem of Lightning-native services and tooling. MDF supports L402 as the Bitcoin-native payment rail alongside x402.
 
-> **402index.io** is a protocol-agnostic directory of paid APIs across L402, x402, and MPP (Machine Payments Protocol, Stripe/Tempo-facilitated session-based settlement). It indexes and payment-verifies endpoints hourly and exposes an MCP server for agent discovery. It is useful prior art demonstrating real-world demand for the 402 ecosystem and a potential discoverability layer for MDF-enabled sites. MPP is acknowledged here as an emerging rail; MDF's rail-agnostic design accommodates it without spec changes, but it is not in scope for v0.1.
+> **402index.io** is a protocol-agnostic directory of paid APIs across L402, x402, and MPP (Machine Payments Protocol, Stripe/Tempo-facilitated session-based settlement). It indexes and payment-verifies endpoints hourly and exposes an MCP server for agent discovery. It is useful prior art demonstrating real-world demand for the 402 ecosystem and a potential discoverability layer for MDF-enabled sites. MPP is acknowledged here as an emerging rail; MDF's rail-agnostic design accommodates it without spec changes, but it is not currently in scope.
 >
 > 402index.io also uses an emerging convention — `/.well-known/l402-services` — where L402 providers publish a machine-readable JSON document describing their endpoints, pricing, and request schemas for autodiscovery. MDF's `/mdf.json` serves a richer version of this same purpose (adding content signals, feed URL, auth endpoint, and format metadata). Whether MDF sites should also publish a `.well-known/l402-services` document for compatibility with the broader 402 ecosystem is an open question — see Open Question 7.
 
@@ -202,7 +202,7 @@ MDF is payment-rail-agnostic. Any mechanism that can produce a verifiable paymen
 
 Sites advertise which rails they accept in `/mdf.json` via `payment.accepted_chains`. Agents select the rail their operator supports. Both protocols use the `402 Payment Required` response code, and MDF's payment flow is identical regardless of which rail executes it.
 
-A third rail — **MPP (Machine Payments Protocol, via Stripe/Tempo)** — has emerged in the broader 402 ecosystem. MPP is a session-based fiat settlement option facilitated by Stripe or Tempo rather than a decentralised payment network. It is not in scope for MDF v0.1 but is acknowledged as a future extension point. MDF's payment-rail-agnostic design means MPP could be added without architectural changes — a site would simply advertise it in `payment.accepted_chains` and implement the corresponding verification logic.
+A third rail — **MPP (Machine Payments Protocol, via Stripe/Tempo)** — has emerged in the broader 402 ecosystem. MPP is a session-based fiat settlement option facilitated by Stripe or Tempo rather than a decentralised payment network. It is not currently in scope but is acknowledged as a future extension point. MDF's payment-rail-agnostic design means MPP could be added without architectural changes — a site would simply advertise it in `payment.accepted_chains` and implement the corresponding verification logic.
 
 ### Authentication via Payment
 
@@ -444,7 +444,7 @@ This positions BitCryptic Compute not only as an AI inference marketplace but as
 
 The following are explicitly unresolved and intended to drive community discussion:
 
-1. **Payment rail standardisation** — Should the spec recommend a default rail (x402 on Base? L402 on Lightning?), or remain fully agnostic? Agnosticism is cleaner but creates interoperability friction for agent implementors who must support multiple rails. A third rail, MPP (Machine Payments Protocol, Stripe/Tempo-facilitated session-based settlement), has emerged in the broader 402 ecosystem — MDF's rail-agnostic design accommodates it without spec changes but it is not yet formally in scope for v0.1.
+1. **Payment rail standardisation** — Should the spec recommend a default rail (x402 on Base? L402 on Lightning?), or remain fully agnostic? Agnosticism is cleaner but creates interoperability friction for agent implementors who must support multiple rails. A third rail, MPP (Machine Payments Protocol, Stripe/Tempo-facilitated session-based settlement), has emerged in the broader 402 ecosystem — MDF's rail-agnostic design accommodates it without spec changes but it is not yet formally in scope.
 
 2. **Receipt verification (L402)** — How does a site verify Lightning payment without running a full node? Trust an LSP, run a lightweight Lightning node, or verify macaroon credentials independently. (The equivalent question for x402 is resolved by the Facilitator Configuration section above: verification is delegated to a standard x402 facilitator's `/verify` endpoint, which handles on-chain confirmation on the server's behalf.)
 
