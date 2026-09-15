@@ -1,0 +1,49 @@
+name: Conformance sweep
+
+# Vikunja #17 — standing conformance pass across the MDF repos.
+#
+# Runs the vendored-file drift check (and the two advisory checks) on every
+# push to main, so a spec change that a consumer repo (mdf-validator) hasn't
+# caught up with is caught within minutes, not at the next time someone
+# happens to run a manual sweep. This is what would have caught #28 (the
+# validator's vendored 402 schema going stale for three days after the
+# 2026-09-12 x402-superset spec change) at the moment the spec changed.
+#
+# Also runs on a weekly schedule, since drift can be introduced on the
+# consumer side too (someone edits mdf-validator without the spec changing
+# at all) — a push-to-mdf-only trigger would miss that.
+
+"on":
+  push:
+    branches: [main]
+  schedule:
+    # Mondays 06:00 UTC. Catches consumer-side drift a push-only trigger
+    # would miss, and re-checks the live demo periodically even when the
+    # spec hasn't moved.
+    - cron: "0 6 * * 1"
+  workflow_dispatch: {}
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out mdf (for the sweep script itself)
+        uses: actions/checkout@v7
+
+      - name: Set up bun (for check 3 — validator vs live demo)
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Run conformance sweep
+        run: |
+          chmod +x scripts/conformance-sweep.sh
+          ./scripts/conformance-sweep.sh --workdir "$RUNNER_TEMP/mdf-conformance-sweep"
+
+      - name: Upload sweep workdir on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: conformance-sweep-workdir
+          path: ${{ runner.temp }}/mdf-conformance-sweep
+          retention-days: 14
