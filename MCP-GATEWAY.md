@@ -1,8 +1,8 @@
 # MDF MCP Gateway — Concept
 
-**Status:** Proposal / design sketch
-**Date:** 2026-09-03
-**Repo:** `bitcryptic-gw/mdf`
+**Status:** Proposal / design sketch — implementation in progress
+**Date:** 2026-09-03 (repo line updated 2026-09-16)
+**Repo:** `bitcryptic-gw/mdf` (this design doc) — implementation in `bitcryptic-gw/mdf-mcp-gateway`
 **Relates to:** `CONCEPT.md` (negotiation, 402, Response Value Signalling), `mdf-server/` (reference implementation), the llms.txt 402 thread (prooflines.org)
 
 ---
