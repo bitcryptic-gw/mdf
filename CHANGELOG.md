@@ -6,6 +6,11 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-16
+
+### Changed — reference server
+- `source_bytes` on both the 200 header (`X-MDF-Source-Bytes`) and the 402 body now reflects the rendered-HTML byte count as specified (CONCEPT.md §253, commit `648562c`), rather than the served-markdown / on-disk markdown file size it had drifted to. Server-only fix; no spec change, `VERSION` unchanged.
+
 ## [0.2.0] - 2026-09-12
 
 ### Added — spec
