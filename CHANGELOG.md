@@ -6,6 +6,11 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-09-18
+
+### Added — reference server
+- `/health` now returns a small JSON body `{ "status": "ok" | "unavailable", "version": "<release>" }` instead of the plain-text `OK`/`UNAVAILABLE`, exposing the server's **release** version distinct from the MDF **protocol** version (`mdf_version` / `X-MDF-Version`). The version is read once from `package.json` at startup and cached. HTTP 200/503 semantics are unchanged, and no monitoring config depends on the body (Caddy `health_uri` and the Docker `HEALTHCHECK` are status-only), so this is additive. Regression test `src/health.test.ts` pins the field to `package.json`. Server-only change; no spec change, `VERSION` unchanged. Vikunja #31.
+
 ## [0.2.2] - 2026-09-18
 
 ### Fixed — reference server
