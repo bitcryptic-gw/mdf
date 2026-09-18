@@ -6,6 +6,11 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-09-18
+
+### Fixed — reference server
+- Requests to a path with no content under a non-zero-priced section now return `404`, not a `402` payment offer. The router verified payment before resolving the requested resource, so the pricing default (0.0001 USDC on the demo) was advertised as a payable resource for any unknown path; only unknown paths under a `$0` section reached the content handler's real `404`. The request router is extracted into `src/router.ts` and gained a single content-existence gate before payment verification, so the 200 and 402 paths share one resolver. Regression suite `src/router.test.ts`. Server-only fix; no spec change, `VERSION` unchanged. Vikunja #29.
+
 ## [0.2.1] - 2026-09-16
 
 ### Changed — reference server
