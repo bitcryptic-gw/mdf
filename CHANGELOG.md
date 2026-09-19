@@ -6,6 +6,15 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-09-19
+
+### Added — reference server
+- **`payment.wallet` is now validated as a strict EIP-55 checksummed address** whenever any pricing is non-zero. The resolved wallet (after `/run/secrets/wallet_address` / `MDF_WALLET` resolution) must be exactly its own EIP-55 checksum form: `0x` + 40 hex digits, mixed-case matching its keccak-256 checksum, and not the zero address. All-lowercase, all-uppercase, wrong-length, missing-`0x`, non-hex, and zero-address values refuse startup with a descriptive error naming the field (never echoing more than the first 6 characters); a malformed wallet on an entirely free site logs a single warning instead. Uses the audited, zero-dependency `@noble/hashes` for keccak-256 (no viem/ethers) and adds a config-loader regression suite. Server-only change; no spec change, `VERSION` unchanged. Vikunja #9.
+
+### Changed — reference server
+- **Dependencies refreshed:** `js-yaml` `4.1.1 → 4.3.2` and `marked` `18.0.5 → 18.0.13`, clearing all `bun audit` advisories (including the four `js-yaml` quadratic-CPU/merge-key DoS advisories); the transitive `gray-matter › js-yaml` is pinned to `3.15.2` via a scoped override. `x-mdf-source-bytes` verified byte-identical for every free content page before/after (`/` = 1241, `/docs/getting-started` = 1003). Server-only change; no spec change, `VERSION` unchanged. Vikunja #16.
+- **`[lightning].api_token` and `[lightning].token_secret` are now optional** in the config schema. They remain inert when present (never read or logged); the loader's secret-file/env resolution is the single source of truth and still refuses startup when a `[lightning]` block is configured but neither source resolves. Existing `mdf.yaml` files carrying inline placeholders continue to parse. Server-only change; no spec change, `VERSION` unchanged. Vikunja #27.
+
 ## [0.2.3] - 2026-09-18
 
 ### Added — reference server
