@@ -6,6 +6,15 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-09-20
+
+### Fixed — reference server
+- **Paid 200 responses are explicitly uncacheable, and a paywall bypass on the L402 routes is closed.** `verifyPayment()` approved any lightning-priced (L402) path *before* inspecting the `X-PAYMENT` header, so any non-empty `X-PAYMENT` value won a paid 200 — and, with a matching `If-None-Match`, a 304 — without payment. It now rejects, so such a request receives a proper 402 L402 challenge. A paid 200 now carries `Cache-Control: private, no-store` with no `ETag`/`Last-Modified` and is never answered from a conditional request; free 200s keep `no-cache` with validators, unchanged. Server-only fix; no spec change, `VERSION` unchanged. Vikunja #40.
+
+### Added — reference server
+- **`Cache-Control: no-store` on every 402 and every payment-failure response.** Set in the single 402 builder (both payment rails, every priced route, both `Accept` variants) as well as the payment-failure and `/mdf/pay` token responses, so an L402 invoice or x402 offer cannot be stored and replayed by a shared cache. Regression coverage added to the handler and router suites. Server-only change; no spec change, `VERSION` unchanged. Vikunja #40.
+- **Bun toolchain pinned.** The Docker base image moves from the floating `oven/bun:1-alpine` (which had resolved to Bun 1.4.2 against a 1.3.14 host toolchain) to `oven/bun:1.3.14-alpine` by explicit tag and multi-arch manifest-list digest, and the `bun-types` devDependency is pinned to `1.3.14` to match. Server-only change; no spec change, `VERSION` unchanged. Vikunja #33.
+
 ## [0.2.4] - 2026-09-19
 
 ### Added — reference server
