@@ -6,6 +6,19 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-09-20
+
+### Fixed — reference server
+- **Lightning invoices were issued 1000x too small, and the sub-satoshi demo tier was unpayable.** Alby Hub's invoice API takes `amount` in millisatoshis, but the server passed its satoshi value through unchanged: `/premium` (1.0000 USDC) was invoiced as 1 sat instead of 1000, and `/micropayment` (0.00000001 BTC = 1 sat) asked Alby for 1 msat = 0.001 sat, which Alby rejected with HTTP 500 — so the L402 route returned a 402 with no challenge at all. `usdToSats()` now returns the exact (possibly fractional) satoshi value and a new `satsToMsat()` rounds up to a whole satoshi (1-sat floor) and converts to millisatoshis, so the invoice matches the advertised amount and the publisher is never under-charged. Server-only fix; no spec change, `VERSION` unchanged. Vikunja #34.
+- **L402 macaroon path scope over-matched.** `verifyL402()` used a bare string prefix, so a credential scoped to `/premium` also authorised `/premiumx/…` and `/premium-other/…`. It now requires a path-segment boundary. Server-only fix; no spec change, `VERSION` unchanged. Vikunja #42.
+- **Settled-record preimage comparison is now constant-time** (`crypto.timingSafeEqual`); the macaroon HMAC and preimage-hash comparisons already were. Server-only hardening; no spec change, `VERSION` unchanged. Vikunja #42.
+
+### Changed — reference server
+- **Negotiated content now sends `Vary: Accept` and uses per-representation ETags.** Previously no `Vary` was sent and markdown and HTML shared one ETag derived from the raw markdown source, so a shared cache could revalidate one representation against the other's ETag and receive a 304. Free 200s, 304s, paid 200s and negotiated 404s now declare `Vary: Accept`, and each representation's ETag is derived from the bytes actually served. Free `no-cache` behaviour, paid `private, no-store`, and `x-mdf-source-bytes` are unchanged. Server-only change; no spec change, `VERSION` unchanged. Vikunja #41.
+
+### Added — reference server
+- **Test coverage for the L402 rail.** `src/payment/l402-verify.test.ts` exercises `verifyL402()` (macaroon HMAC, scope, preimage, Alby settlement) with a mocked Alby, and `src/payment/l402-invoice.test.ts` covers the invoice unit conversion. The prior absence of any L402 verifier test is how the 0.2.5 stub bypass survived. Server-only; no spec change, `VERSION` unchanged. Vikunja #34, #42.
+
 ## [0.2.5] - 2026-09-20
 
 ### Fixed — reference server
