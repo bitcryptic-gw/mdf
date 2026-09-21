@@ -6,6 +6,22 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-09-21
+
+Server-only release. No spec change; `VERSION` stays `0.2.0`. Vikunja #43, #44.
+
+### Fixed — reference server
+- **The L402 fail-open is closed.** `verifyL402()` returned `stub_approved` — approval on a structural check alone, with no verification — whenever no `[lightning]` block was configured. A minimal or misconfigured deployment that priced a route on `chain: lightning` but omitted `[lightning]` therefore served that route to any well-formed-looking `L402` header. The loader now **refuses to start** if any non-zero-priced route is `chain: lightning` and no `[lightning]` block is configured, naming the offending section and printing no secret material; the `stub_approved` status and the router branches that consumed it are removed, so the runtime path fails closed (the L402 branch rejects when lightning is not configured). A `[lightning]` block whose secrets cannot be resolved still fails startup exactly as before. Server-only fix.
+- **A BTC-denominated lightning price is no longer read at the USD rate.** `usdToSats()` applied the fixed 1000 sats/USD reference rate to every price, including BTC. A BTC price is now converted at 1 BTC = 100,000,000 sats, and USD/USDC prices keep the fixed rate. Any other currency on the lightning rail is an explicit **load-time rejection**, not a silent misread. `/micropayment/**` (0.00000001 BTC) is unchanged at 1 sat; `0.000001` BTC now correctly yields 100 sat (previously 1, a 100x undercharge). Server-only fix.
+
+### Changed — reference server
+- **An L402 challenge is attached only to offers on the lightning rail.** `build402Response()` previously attached a `WWW-Authenticate: L402` header and a Bitcoin invoice to *every* 402 whenever `[lightning]` was configured — including x402/USDC-only offers, which advertise USDC only. Advertised rails now match what the response can fulfil, and an x402 offer no longer burns an Alby invoice per 402. This is a deliberate single-rail-per-route position for now; offering every configured rail for every priced resource is future work. Server-only change.
+
+### Added — reference server
+- **A structured failure surface for lightning invoicing, backend-agnostic.** When invoice creation fails, `createL402Challenge()` now returns a typed failure with a category (`rejected` | `auth` | `unreachable` | `unknown`), the upstream HTTP status (if any) and a sanitised, truncated upstream message — retained for the structured log only. A circuit breaker (in-memory, per-process) opens on failure, stops calling the backend on every subsequent 402, and retries on a timer with exponential backoff, a cap and jitter, so a transient fault recovers with no inbound traffic (one probe in flight at a time; timers cleared on shutdown). Tunables `lightning.breaker_initial_backoff_seconds` (default 5) and `lightning.breaker_max_backoff_seconds` (default 300) are config-driven and validated; defaults mean no `mdf.yaml` change is required.
+- **`/health` gains an optional `lightning` block** — `{ "status": "degraded", "since", "category", "next_retry" }` (coarse category and timestamps only; never the upstream message) — while the top-level `status` stays `"ok"` and the HTTP code stays `200`, since x402 and free routes are unaffected and a non-200 would pull the instance out of a Caddy/Docker pool. Healthy responses are unchanged and carry no `lightning` block.
+- **A degraded lightning-only route returns `503` with `Retry-After`** (rather than a 402 advertising a rail that cannot be fulfilled). A 402/503 that would have offered lightning carries `payment.lightning_unavailable: true` plus the coarse category. This is a server-emitted, optional field; the vendored `mdf-402.schema.json` permits it (`additionalProperties: true`), so no schema change is required.
+
 ## [0.2.6] - 2026-09-20
 
 ### Fixed — reference server
