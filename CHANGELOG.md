@@ -6,6 +6,20 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-10-02
+
+Server-only release. No spec change; `VERSION` stays `0.2.0`. Vikunja #52.
+
+### Fixed — reference server
+- **The x402 `/verify` on-chain settlement fallback is removed (security).** When the facilitator's `/verify` did not return `isValid: true`, `verifyPayment()` called `confirmSettlementOnChain()` and approved the request if the authorization's `(from, nonce)` had settled on-chain — without re-checking `validBefore`, the amount against the current offer, or the resource. Because `transferWithAuthorization` calldata is public, anyone could rebuild an `X-PAYMENT` from any settled payment to the site's `pay_to` and replay it indefinitely to unlock that route (observed live on Base Sepolia, 2026-10-02). A `/verify` that rejects a payment now returns `402` with a fresh offer and never approves on the strength of a prior settlement. The accepted trade-off is that a client that loses a *successful* response must pay again. Server-only fix; no spec change, `VERSION` unchanged. Vikunja #52.
+
+### Changed — reference server
+- **`/verify` outcomes are classified as `valid | invalid | error`.** A structured `{"isValid":false}` body is a payment denial → `402`, whatever the HTTP status — x402-rs answers a used nonce and an invalid signature with HTTP 500 but still carries the verdict, while an expired or under-paid authorization arrives as HTTP 400. A response with no structured verdict (unreachable, timeout, unparseable, or a non-200 without `isValid:false`) is a facilitator-side failure → the existing `503`. This makes a used or expired nonce always `402`, never a `5xx` or a `200`.
+- **The `/settle`-error on-chain recovery is retained, but bound to the verified authorization.** The only remaining on-chain approval runs on a `/settle` error after `/verify` returned `valid` in the same request, and checks the exact `(from, nonce)` `/verify` accepted (passed as a typed value, not re-read from the request). A `/settle` error that is not recovered on-chain is a facilitator-side failure → `503`, not a payment rejection. The accepted trade-off therefore covers only a lost *client* response; a lost *facilitator* `/settle` response is still recovered within the same request. Residual risk noted: a settle transaction visible in the mempool could in principle be replayed before it is mined — Base's sequencer mempool is not public, so this was not observed.
+
+### Added — reference server
+- **`src/payment/x402-verify.test.ts`** (14 tests): used / expired / under-amount / wrong-recipient / bad-signature → `402` with no `/settle` and no on-chain lookup; an unstructured `500` and a transport failure → `503`; the happy path (`verify` ok → `settle` ok → `200`); the `/settle`-error recovery using the verified `(from, nonce)` (with a calldata assertion); `/settle` error not recovered on-chain → `503`; on-chain lookup failure → `503`; and the approval invariant that the on-chain check is unreachable unless `/verify` succeeded. Server-only; no spec change, `VERSION` unchanged. Vikunja #52.
+
 ## [0.2.7] - 2026-09-21
 
 Server-only release. No spec change; `VERSION` stays `0.2.0`. Vikunja #43, #44.
