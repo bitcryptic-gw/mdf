@@ -45,18 +45,6 @@
       }
     }
   },
-  "payment": {
-    "endpoint": "https://example.com/mdf/pay",
-    "accepted_networks": [
-      "eip155:8453",
-      "lnbtc:000000000019d6689c085ae165831e93"
-    ],
-    "accepted_currencies": [
-      "USDC",
-      "BTC"
-    ],
-    "wallet": "0x3333333333333333333333333333333333333333"
-  },
   "content_signals": {
     "ai_train": false,
     "ai_input": true,
