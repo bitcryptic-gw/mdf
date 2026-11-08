@@ -56,7 +56,6 @@
         "type": "object",
         "required": [
           "version",
-          "expires_at",
           "price_summary"
         ],
         "properties": {

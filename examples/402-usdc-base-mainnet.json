@@ -17,7 +17,7 @@
       "network": "eip155:8453",
       "amount": "10000",
       "asset": "0x1111111111111111111111111111111111111111",
-      "payTo": "0x2222222222222222222222222222222222222222",
+      "payTo": "0x3333333333333333333333333333333333333333",
       "maxTimeoutSeconds": 300,
       "extra": {
         "assetTransferMethod": "eip3009",
@@ -31,23 +31,17 @@
       "info": {
         "version": "0.3.0",
         "source_bytes": 48213,
-        "expires_at": "2026-11-08T12:05:00Z",
         "price_summary": "0.01 USDC on Base (eip155:8453)"
       },
       "schema": {
         "type": "object",
         "required": [
           "version",
-          "expires_at",
           "price_summary"
         ],
         "properties": {
           "version": {
             "type": "string"
-          },
-          "expires_at": {
-            "type": "string",
-            "format": "date-time"
           },
           "price_summary": {
             "type": "string"
