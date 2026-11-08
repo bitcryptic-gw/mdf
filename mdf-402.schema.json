@@ -232,7 +232,7 @@
           "format": "uri",
           "pattern": "^https://",
           "maxLength": 2048,
-          "description": "Present where payment at this tier issues a bearer credential rather than delivering content immediately."
+          "description": "Present where payment at this tier issues a bearer credential rather than delivering content immediately. This is the same location /mdf.json declares as auth.endpoint for a section whose price entry carries access: token."
         },
         "token_estimate": {
           "type": "integer",
