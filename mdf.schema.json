@@ -21,9 +21,9 @@
 
     "mdf_version": {
       "type": "string",
-      "description": "The MDF spec version this document conforms to.",
-      "pattern": "^\\d+\\.\\d+$",
-      "examples": ["1.0"]
+      "description": "The MDF spec version this document conforms to, as MAJOR.MINOR or MAJOR.MINOR.PATCH. 0.3.0 is published as a three-component version, so the pattern accepts both forms; documents SHOULD use the full form the spec is released under.",
+      "pattern": "^\\d+\\.\\d+(\\.\\d+)?$",
+      "examples": ["0.3.0"]
     },
 
     "site": {
@@ -64,7 +64,8 @@
           "examples": [
             {
               "/docs/**": { "amount": "0.0000", "currency": null, "chain": null },
-              "/premium/**": { "amount": "1.0000", "currency": "USDC", "chain": "base" }
+              "/premium/**": { "amount": "1.0000", "currency": "USDC", "chain": "eip155:8453" },
+              "/micropayment/**": { "amount": "0.00000010", "currency": "BTC", "chain": "lnbtc:000000000019d6689c085ae165831e93" }
             }
           ]
         }
@@ -81,16 +82,17 @@
         "endpoint": {
           "type": "string",
           "format": "uri",
-          "description": "URL to which agents submit payment proofs. Must handle both x402-compatible EVM payment proofs and L402 Lightning payment proofs, as indicated by the agent's chosen rail from accepted_chains.",
+          "description": "URL to which agents present payment where the implementation separates payment from the resource URL — chiefly the credential-issuing tiers. x402 v2 does not use a payment submission endpoint for its own rails: a client pays by retrying the resource URL with a PAYMENT-SIGNATURE header. Retained in 0.3.0 for the auth flow; whether it should remain is an open question.",
           "examples": ["https://example.com/mdf/pay"]
         },
 
         "accepted_chains": {
           "type": "array",
-          "description": "List of accepted payment rails. For EVM networks use the chain name (e.g. 'base', 'ethereum'). For Bitcoin Lightning use 'lightning'. Agents select from this list when constructing payments.",
+          "description": "List of accepted settlement networks, as CAIP-2 identifiers. Chain names ('base', 'ethereum', 'lightning') were removed in 0.3.0. The key name itself is unchanged in 0.3.0 so readers can migrate field values and field names separately; renaming it to accepted_networks is an open question.",
           "items": {
             "type": "string",
-            "examples": ["base", "ethereum", "polygon", "solana", "lightning"]
+            "pattern": "^[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}$",
+            "examples": ["eip155:8453", "eip155:84532", "lnbtc:000000000019d6689c085ae165831e93"]
           },
           "minItems": 1,
           "uniqueItems": true
@@ -98,7 +100,7 @@
 
         "accepted_currencies": {
           "type": "array",
-          "description": "List of accepted currency symbols. For Lightning payments use 'BTC' (denominated in satoshis). Agents should select a currency supported on their chosen chain.",
+          "description": "List of accepted asset symbols. 'BTC' is the Lightning rail's asset, denominated in millisatoshis on the wire. A symbol here is a display convenience only: the authoritative asset for a given offer is accepts[].asset in the 402, which is a contract address on an EVM rail.",
           "items": {
             "type": "string",
             "examples": ["USDC", "USDT", "ETH", "BTC"]
@@ -314,8 +316,9 @@
 
         "chain": {
           "type": ["string", "null"],
-          "description": "Preferred payment rail for this price tier. Use an EVM chain name (e.g. 'base', 'ethereum') for x402 flows, or 'lightning' for L402/Lightning flows. Null or omitted for free access. Agents may select an alternative from payment.accepted_chains if the preferred rail is unsupported.",
-          "examples": ["base", "ethereum", "polygon", "solana", "lightning", null]
+          "pattern": "^[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}$",
+          "description": "Settlement network for this price tier, as a CAIP-2 identifier. Chain names ('base', 'ethereum', 'lightning') were removed in 0.3.0. Null or omitted for free access. This entry still names one preferred network per price; expressing several equivalent rails for the same price is not decided in 0.3.0 — the 402's accepts[] is authoritative for what can actually be paid. Note the key name is still 'chain' though the value is a network id; see the open question on renaming.",
+          "examples": ["eip155:8453", "eip155:84532", "lnbtc:000000000019d6689c085ae165831e93", null]
         }
 
       }
@@ -325,20 +328,21 @@
 
   "examples": [
     {
-      "mdf_version": "1.0",
+      "mdf_version": "0.3.0",
       "site": "https://example.com",
       "name": "Example Documentation",
       "pricing": {
-        "default": { "amount": "0.0001", "currency": "USDC", "chain": "base" },
+        "default": { "amount": "0.0001", "currency": "USDC", "chain": "eip155:8453" },
         "sections": {
           "/docs/**": { "amount": "0.0000", "currency": null, "chain": null },
-          "/premium/**": { "amount": "1.0000", "currency": "USDC", "chain": "base" },
-          "/private/**": { "amount": "100.00", "currency": "USDC", "chain": "base" }
+          "/premium/**": { "amount": "1.0000", "currency": "USDC", "chain": "eip155:8453" },
+          "/private/**": { "amount": "100.00", "currency": "USDC", "chain": "eip155:8453" },
+          "/micropayment/**": { "amount": "0.00000010", "currency": "BTC", "chain": "lnbtc:000000000019d6689c085ae165831e93" }
         }
       },
       "payment": {
         "endpoint": "https://example.com/mdf/pay",
-        "accepted_chains": ["base", "ethereum", "lightning"],
+        "accepted_chains": ["eip155:8453", "eip155:84532", "lnbtc:000000000019d6689c085ae165831e93"],
         "accepted_currencies": ["USDC", "USDT", "BTC"],
         "wallet": "0xAbCd1234AbCd1234AbCd1234AbCd1234AbCd1234"
       },
