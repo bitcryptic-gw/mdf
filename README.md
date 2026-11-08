@@ -17,7 +17,7 @@ AI agents are now among the most frequent consumers of web content, yet the web 
 - **Markdown-first authoring** — markdown is the source of truth; HTML is rendered from it for browsers, not the other way around
 - **Native agent serving** — `Accept: text/markdown` returns clean markdown at the same URL, no conversion middleware required
 - **Structured discovery** — `/mdf.json` advertises capabilities, pricing, and content signals in a machine-readable format that agents can query before fetching
-- **Price as access policy** — a single price field unifies open access, micropayment, and private/authenticated access into one continuous spectrum, settled through x402 v2 over USDC on an EVM chain or BTC over Lightning
+- **Price as access policy** — one price per rail, in that rail's own units and with no exchange rate, unifies open access, micropayment, and private/authenticated access into one continuous spectrum, settled through x402 v2 over USDC on an EVM chain or BTC over Lightning
 
 ## Two arguments, not one
 

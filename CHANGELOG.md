@@ -23,12 +23,17 @@ Drafted against `x402-foundation/x402` at commit `513dd66d2b3eb2388065f9923d81aa
 - **`PAYMENT-RESPONSE` is required on every paid 200, on every rail.** For `exact`/lnbtc, `transaction` is the invoice payment hash and `payer` is omitted. Paid 200s remain `Cache-Control: private, no-store`.
 - **Client payments use `PAYMENT-SIGNATURE`.** `X-PAYMENT` is not accepted.
 - **L402 is demoted to an optional compatibility challenge** (non-normative). A server MAY emit `WWW-Authenticate: L402` on Lightning-priced routes for BLIP-0026 clients; it is outside the x402 rules and does not affect `accepts[]`.
-- **`/mdf.json`: `chain` is a CAIP-2 network id.** The field name is unchanged in this release; only its values change.
+- **`/mdf.json` prices are per rail, and two keys are renamed.** A price entry is now `{ "rails": [{ scheme, network, asset, amount }] }` — a list, one entry per rail, each with its own price in that rail's own units. `chain` is renamed to `network` and `accepted_chains` to `accepted_networks`, because both now hold CAIP-2 identifiers rather than chain names. `pricing.*.currency` is gone; the asset is per rail.
+- **No exchange rate.** Each rail's price is set by the publisher. There is no canonical price and no conversion between rails anywhere in the specification.
+- **The 402 must agree with `/mdf.json`.** The `accepts[]` entries a server emits for a resource MUST correspond one-to-one to the rails declared for that resource's path, with identical scheme, network, asset and amount, minus any rail that is degraded.
+- **`expires_at` is optional (SHOULD).** `maxTimeoutSeconds`, and on the lnbtc rail the BOLT11 invoice expiry that must equal it, already bound when an offer can be paid.
+- **`X-MDF-Version` stays `1`.** It marks the protocol family; the precise spec version is `extensions.mdf.version` and `mdf_version`, and a 402 identifies its payment version through `x402Version: 2`.
 
 ### Added — specification
 
 - `mdf-402.schema.json` is rewritten for the v2 shape: `x402Version` pinned to `2`, CAIP-2 pattern on `network`, `amount` as an atomic integer string, `resource` as an object, conditionals for the two defined rails, and `$defs.mdfExtension` / `$defs.mdfExtensionInfo` for the extension.
-- `examples/` — a USDC-only 402, a dual-rail 402, and a paid 200 `PAYMENT-RESPONSE` for each rail, with the validation procedure and recorded output.
+- `mdf.schema.json`: per-rail pricing (`pricing.*.rails`), the `chain`→`network` and `accepted_chains`→`accepted_networks` renames, and a `mdf_version` pattern that accepts a patch component.
+- `examples/` — a USDC-only 402, a dual-rail 402, a dual-rail `/mdf.json` whose `/micropayment/*` rails match that 402 entry for entry, and a paid 200 `PAYMENT-RESPONSE` for each rail, with the validation procedure and recorded output.
 
 ### Unchanged
 
@@ -38,7 +43,7 @@ Drafted against `x402-foundation/x402` at commit `513dd66d2b3eb2388065f9923d81aa
 
 ### Open questions carried by this release
 
-Placement of the non-payment 402 fields in `extensions.mdf.info` (#13), one invoice backing both x402 lnbtc and an L402 challenge (#14, Vikunja #54), per-rail pricing in `/mdf.json` (#15), and whether `X-MDF-Version` should advance. Recorded in `CONCEPT.md` and in the 0.3.0 draft PR.
+Two remain, both raised by the move to per-rail pricing: `auth.price_threshold` compares against prices that are now per-rail atomic amounts with no exchange rate (#13), and `payment.accepted_networks` / `accepted_currencies` are now derivable from `pricing.rails` (#14). Recorded in `CONCEPT.md` and in the 0.3.0 draft PR.
 
 ### Migrating from 0.2.x
 
@@ -55,9 +60,9 @@ Placement of the non-payment 402 fields in `extensions.mdf.info` (#13), one invo
 | `payment.max_timeout_seconds` | `accepts[].maxTimeoutSeconds` |
 | `payment.extra` | `accepts[].extra` |
 | `payment.rail` | removed — the network identifies the rail |
-| `payment.accepted_chains`, `payment.accepted_currencies` | removed from the 402; still in `/mdf.json` |
+| `payment.accepted_chains` (402) | removed; the offer is `accepts[]` alone |
 | `payment.session_nonce` | removed |
-| `payment.expires_at` | `extensions.mdf.info.expires_at` |
+| `payment.expires_at` | `extensions.mdf.info.expires_at` (now SHOULD, not required) |
 | `payment.invoice` (L402) | `accepts[].extra.invoice` (on the `lnbtc` entry) |
 | `payment.macaroon` (L402) | only on the optional L402 compatibility path |
 | `resource: "https://…"` (string) | `resource: { "url": "https://…" }` |
@@ -69,7 +74,18 @@ Placement of the non-payment 402 fields in `extensions.mdf.info` (#13), one invo
 | `X-PAYMENT` (client) | `PAYMENT-SIGNATURE` |
 | — | `PAYMENT-REQUIRED` (server, base64 of the same body) |
 
-Related: the schema's `mdf_version` pattern now also accepts a three-component version, so a document can declare `0.3.0`; the previous pattern accepted only `MAJOR.MINOR`.
+Renamed in `/mdf.json` (field names, not just values):
+
+| 0.2.x | 0.3.0 |
+|---|---|
+| `pricing.*.chain` | `pricing.*.rails[].network` |
+| `pricing.*.currency` | `pricing.*.rails[].asset` |
+| `pricing.*.amount` (decimal) | `pricing.*.rails[].amount` (atomic integer) |
+| `payment.accepted_chains` | `payment.accepted_networks` |
+
+A price entry is now a list of rails rather than a single price, so a section that was `{ "amount": "0.0001", "currency": "USDC", "chain": "base" }` becomes `{ "rails": [{ "scheme": "exact", "network": "eip155:8453", "asset": "<USDC contract>", "amount": "100" }] }`. An unpriced section is `{ "rails": [] }`. There is no exchange rate: each rail's amount is the publisher's own price in that rail's units.
+
+Related: the schemas' `mdf_version` pattern now also accepts a three-component version, so a document can declare `0.3.0`; the previous pattern accepted only `MAJOR.MINOR`.
 
 ## [0.2.8] - 2026-10-02
 
