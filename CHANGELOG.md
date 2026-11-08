@@ -15,7 +15,7 @@ Drafted against `x402-foundation/x402` at commit `513dd66d2b3eb2388065f9923d81aa
 ### Breaking — specification
 
 - **The 402 body is an x402 v2 `PaymentRequired`.** `x402Version` is `2`; `resource` is an object; `accepts[]` carries one entry per rail; `extensions` carries MDF's fields. The same object MUST be carried base64-encoded in the `PAYMENT-REQUIRED` header, and body and header MUST agree field for field. 402s MUST be `Cache-Control: no-store` and MUST still carry `X-MDF-Version`. The "superset of x402 v1 `PaymentRequirements`" relationship is removed.
-- **MDF's own fields move into `extensions.mdf`.** The extension entry uses the structure x402 v2 defines for every extension — `info` plus `schema` — with snake_case members inside `info`: `version`, `expires_at` (both required), `price_summary` (required, derived from and required to agree with `accepts[]`), and optional `source_bytes`, `savings`, `auth_endpoint`, `token_estimate` / `token_estimate_note`. The extension never restates `amount`, `payTo` or `network`.
+- **MDF's own fields move into `extensions.mdf`.** The extension entry uses the structure x402 v2 defines for every extension — `info` plus `schema` — with snake_case members inside `info`: `version` and `price_summary` (required, the latter derived from and required to agree with `accepts[]`), `expires_at` (SHOULD), and optional `source_bytes`, `savings`, `auth_endpoint`, `token_estimate` / `token_estimate_note`. The extension never restates `amount`, `payTo` or `network`.
 - **CAIP-2 network ids replace chain names on the wire.** `base` → `eip155:8453`, `base_sepolia` → `eip155:84532`, `lightning` → `lnbtc:000000000019d6689c085ae165831e93`.
 - **Amounts are atomic integer strings.** `"0.01" USDC` becomes `"10000"` micro-USDC; Lightning amounts are millisatoshis.
 - **Lightning is x402 `exact` on `lnbtc`, not a bespoke L402 envelope.** One `accepts[]` entry, `asset: "BTC"`, `payTo` as the receiver's compressed secp256k1 public key, and `extra` carrying the invoice plus the scheme's request-binding fields. Invoice, binding and replay rules are the scheme spec's, not MDF's.
@@ -23,7 +23,10 @@ Drafted against `x402-foundation/x402` at commit `513dd66d2b3eb2388065f9923d81aa
 - **`PAYMENT-RESPONSE` is required on every paid 200, on every rail.** For `exact`/lnbtc, `transaction` is the invoice payment hash and `payer` is omitted. Paid 200s remain `Cache-Control: private, no-store`.
 - **Client payments use `PAYMENT-SIGNATURE`.** `X-PAYMENT` is not accepted.
 - **L402 is demoted to an optional compatibility challenge** (non-normative). A server MAY emit `WWW-Authenticate: L402` on Lightning-priced routes for BLIP-0026 clients; it is outside the x402 rules and does not affect `accepts[]`.
-- **`/mdf.json` prices are per rail, and two keys are renamed.** A price entry is now `{ "rails": [{ scheme, network, asset, amount }] }` — a list, one entry per rail, each with its own price in that rail's own units. `chain` is renamed to `network` and `accepted_chains` to `accepted_networks`, because both now hold CAIP-2 identifiers rather than chain names. `pricing.*.currency` is gone; the asset is per rail.
+- **`/mdf.json` prices are per rail, and one key is renamed.** A price entry is now `{ "rails": [{ scheme, network, asset, amount }], "access": "per_fetch" | "token" }` — a list, one entry per rail, each with its own price in that rail's own units. `pricing.*.chain` is renamed `network`, because it now holds a CAIP-2 identifier. `pricing.*.currency` is gone; the asset is per rail.
+- **`auth.price_threshold` is replaced by a per-section `access` flag.** `access: "token"` on a price entry means payment there issues a bearer token (named by `auth.endpoint`, lasting `auth.token_ttl_seconds`) instead of delivering content per fetch; `access: "per_fetch"` is the default. Token access is a publisher decision per section, and with per-rail prices and no exchange rate a price threshold cannot be evaluated. A `token` entry MUST have at least one rail.
+- **The `/mdf.json` `payment` object is removed.** `payment.accepted_networks` and `payment.accepted_currencies` are the union of `pricing.rails`; `payment.wallet` is redundant with, and could contradict, `accepts[].payTo` in the live offer. A client derives a site's capability from the rails it declares. `payment.endpoint` folds into `auth.endpoint`, since credential issuance was the only flow that needed a separate location. A site priced entirely per fetch now needs no `payment` or `auth` block at all.
+- **The root conditional is now about tokens, not prices.** "Any non-zero price requires `payment`" is gone. In its place: if any price entry has `access: "token"`, `auth.endpoint` is required.
 - **No exchange rate.** Each rail's price is set by the publisher. There is no canonical price and no conversion between rails anywhere in the specification.
 - **The 402 must agree with `/mdf.json`.** The `accepts[]` entries a server emits for a resource MUST correspond one-to-one to the rails declared for that resource's path, with identical scheme, network, asset and amount, minus any rail that is degraded.
 - **`expires_at` is optional (SHOULD).** `maxTimeoutSeconds`, and on the lnbtc rail the BOLT11 invoice expiry that must equal it, already bound when an offer can be paid.
@@ -32,18 +35,18 @@ Drafted against `x402-foundation/x402` at commit `513dd66d2b3eb2388065f9923d81aa
 ### Added — specification
 
 - `mdf-402.schema.json` is rewritten for the v2 shape: `x402Version` pinned to `2`, CAIP-2 pattern on `network`, `amount` as an atomic integer string, `resource` as an object, conditionals for the two defined rails, and `$defs.mdfExtension` / `$defs.mdfExtensionInfo` for the extension.
-- `mdf.schema.json`: per-rail pricing (`pricing.*.rails`), the `chain`→`network` and `accepted_chains`→`accepted_networks` renames, and a `mdf_version` pattern that accepts a patch component.
-- `examples/` — a USDC-only 402, a dual-rail 402, a dual-rail `/mdf.json` whose `/micropayment/*` rails match that 402 entry for entry, and a paid 200 `PAYMENT-RESPONSE` for each rail, with the validation procedure and recorded output.
+- `mdf.schema.json`: per-rail pricing (`pricing.*.rails`), the `chain`→`network` rename, the per-section `access` flag, the removal of the `payment` object, the token-requires-`auth.endpoint` root conditional, and a `mdf_version` pattern that accepts a patch component.
+- `examples/` — a USDC-only 402, a dual-rail 402, a dual-rail `/mdf.json` whose `/micropayment/*` rails match that 402 entry for entry, a token-tier `/mdf.json`, and a paid 200 `PAYMENT-RESPONSE` for each rail, with the validation procedure and recorded output.
 
 ### Unchanged
 
 - Negotiation, `mdf.json`, `llms.txt` discovery, tiers, content signals, feeds and the auth-token concept.
-- `X-MDF-Version` keeps its value (`1`): it identifies the MDF protocol, not this specification's release number. Whether it should advance with the payment layer is an open question, not decided here.
+- `X-MDF-Version` keeps its value (`1`): it identifies the MDF protocol family, not this specification's release number. The precise spec version is `extensions.mdf.version` and `mdf_version`, and a 402 identifies its payment version through `x402Version: 2`.
 - The reference server, validator, WordPress plugin and deployments are out of scope for this release; they follow in #64, #58–#60.
 
 ### Open questions carried by this release
 
-Two remain, both raised by the move to per-rail pricing: `auth.price_threshold` compares against prices that are now per-rail atomic amounts with no exchange rate (#13), and `payment.accepted_networks` / `accepted_currencies` are now derivable from `pricing.rails` (#14). Recorded in `CONCEPT.md` and in the 0.3.0 draft PR.
+None. The two raised by per-rail pricing (`auth.price_threshold`, `accepted_*` redundancy) are resolved by the `access` flag and by removing the derivable fields. One implementation question is open in the PR only — whether folding `payment.endpoint` into `auth.endpoint` is right — and it is a confirmation, not a design gap: the branch implements the fold.
 
 ### Migrating from 0.2.x
 
@@ -74,16 +77,21 @@ Two remain, both raised by the move to per-rail pricing: `auth.price_threshold` 
 | `X-PAYMENT` (client) | `PAYMENT-SIGNATURE` |
 | — | `PAYMENT-REQUIRED` (server, base64 of the same body) |
 
-Renamed in `/mdf.json` (field names, not just values):
+Changed, renamed or removed in `/mdf.json`:
 
 | 0.2.x | 0.3.0 |
 |---|---|
 | `pricing.*.chain` | `pricing.*.rails[].network` |
 | `pricing.*.currency` | `pricing.*.rails[].asset` |
 | `pricing.*.amount` (decimal) | `pricing.*.rails[].amount` (atomic integer) |
-| `payment.accepted_chains` | `payment.accepted_networks` |
+| `auth.price_threshold` | per-section `access: "token"` on the price entry |
+| `payment.accepted_chains` | removed — derive from the union of `pricing.rails` |
+| `payment.accepted_currencies` | removed — same |
+| `payment.wallet` | removed — the authoritative recipient is `accepts[].payTo` in the 402 |
+| `payment.endpoint` | `auth.endpoint` (proposed; see the 0.3.0 draft PR) |
+| `payment` (object) | removed — only the token flow needed any of it, and that is `auth` |
 
-A price entry is now a list of rails rather than a single price, so a section that was `{ "amount": "0.0001", "currency": "USDC", "chain": "base" }` becomes `{ "rails": [{ "scheme": "exact", "network": "eip155:8453", "asset": "<USDC contract>", "amount": "100" }] }`. An unpriced section is `{ "rails": [] }`. There is no exchange rate: each rail's amount is the publisher's own price in that rail's units.
+A price entry is now a list of rails rather than a single price, so a section that was `{ "amount": "0.0001", "currency": "USDC", "chain": "base" }` becomes `{ "rails": [{ "scheme": "exact", "network": "eip155:8453", "asset": "<USDC contract>", "amount": "100" }] }`. An unpriced section is `{ "rails": [] }`. Add `"access": "token"` to a priced entry to issue a bearer token instead of delivering per fetch, and declare `auth.endpoint` when any entry does. There is no exchange rate: each rail's amount is the publisher's own price in that rail's units.
 
 Related: the schemas' `mdf_version` pattern now also accepts a three-component version, so a document can declare `0.3.0`; the previous pattern accepted only `MAJOR.MINOR`.
 

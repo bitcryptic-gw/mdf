@@ -118,7 +118,7 @@ This is a tool that spends money in response to content fetched from the open in
 
 **Ledger.** Append-only, on disk, one line per decision (paid / declined / gated), with URL, price, `source_bytes`, estimated saving, and policy verdict. This is both the user-facing value report and the forensic record if something goes wrong.
 
-**Input validation.** Payment offers arriving in a 402 body are untrusted input: validate against a schema, bound all numeric fields, reject unknown payment schemes rather than attempting them, and never follow a payment endpoint on a different origin from the resource without explicit policy allowance.
+**Input validation.** Payment offers arriving in a 402 body are untrusted input: validate against a schema, bound all numeric fields, reject unknown payment schemes rather than attempting them, and never follow an auth endpoint on a different origin from the resource without explicit policy allowance.
 
 ## 7. Telemetry — the strategic argument
 

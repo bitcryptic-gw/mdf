@@ -152,18 +152,18 @@ Example `/mdf.json`:
           { "scheme": "exact", "network": "eip155:8453", "asset": "0x1111111111111111111111111111111111111111", "amount": "1000" },
           { "scheme": "exact", "network": "lnbtc:000000000019d6689c085ae165831e93", "asset": "BTC", "amount": "1000" }
         ]
+      },
+      "/private/*": {
+        "rails": [
+          { "scheme": "exact", "network": "eip155:8453", "asset": "0x1111111111111111111111111111111111111111", "amount": "100000000" }
+        ],
+        "access": "token"
       }
     }
   },
-  "payment": {
-    "endpoint": "https://example.com/mdf/pay",
-    "accepted_networks": ["eip155:8453", "eip155:84532", "lnbtc:000000000019d6689c085ae165831e93"],
-    "accepted_currencies": ["USDC", "BTC"]
-  },
   "auth": {
     "endpoint": "https://example.com/mdf/auth",
-    "token_ttl_seconds": 86400,
-    "price_threshold": "10.00"
+    "token_ttl_seconds": 86400
   },
   "content_signals": {
     "ai_train": false,
@@ -180,11 +180,13 @@ Example `/mdf.json`:
 
 Each price entry carries a `rails` list: one entry per rail the site will accept for that path, each with its own `scheme`, CAIP-2 `network`, `asset` and `amount`. The amount is in that rail's own atomic units — the same convention as `accepts[].amount` in a 402 — and an empty list means open access.
 
+Each entry also carries `access`, either `per_fetch` (the default) or `token`. `per_fetch` is the x402 path: paying delivers that resource, and the client retries the resource URL with `PAYMENT-SIGNATURE`. `token` means paying that path issues a bearer token instead — the endpoint is `auth.endpoint`, the lifetime `auth.token_ttl_seconds`, and the token is presented on later fetches to the whole path. Token access is a publisher's decision about a section, and it has to be stated per section: with per-rail prices in different units and no exchange rate, "price at or above X" is not a comparison this specification can make, which is why 0.2.x's `auth.price_threshold` is gone. A `token` entry MUST carry at least one rail — a free token tier is meaningless — and a document with any `token` entry MUST declare `auth.endpoint`.
+
 **There is no exchange rate anywhere in this specification.** Each rail's price is set by the publisher in that rail's own units. `"1000"` micro-USDC and `"1000"` millisatoshis are two independent prices that happen to be written with the same digits, not one price converted. A server MUST NOT derive one rail's price from another, and a consumer MUST NOT treat one rail's price as a conversion of another's at any rate.
 
 **The 402 must agree with the declaration.** The `accepts[]` entries a server emits for a resource MUST correspond one-to-one to the `rails` that `/mdf.json` declares for that resource's path, with identical `scheme`, `network`, `asset` and `amount`. The one permitted divergence is subtraction: a rail that is currently degraded or unavailable is omitted from `accepts[]` (see Rails, above) and appears only in the declaration. A server MUST NOT invent an `accepts[]` entry that no declared rail backs, and MUST NOT substitute a different amount or asset.
 
-The `payment` block stays the site-level mechanism claim — which networks the site accepts at all, where credential issuance lives — while `pricing.rails` is what a path pattern costs and `accepts[]` is what a specific resource currently accepts.
+There is no site-level payment object and no site-level wallet. 0.2.x's `payment.accepted_networks` and `payment.accepted_currencies` are gone because they are the union of `pricing.rails`, and `payment.wallet` is gone because a single static address is redundant with — and could contradict — the live offer: the authoritative recipient is `accepts[].payTo` in the 402, per rail. A client that wants the site's capability takes the union of the rails it declares. 0.2.x's `payment.endpoint` folded into `auth.endpoint`, because the only flow that ever needed a separate endpoint was credential issuance; an x402 payment is presented on the resource URL itself, so a site priced entirely per fetch needs no `payment` or `auth` block at all.
 
 `/mdf.json` is a **capability and mechanism** declaration — not a coverage index, not a per-resource price list. Its job is to state that a site supports `Accept: text/markdown` negotiation, declare its configured rails and their prices per path pattern, describe how payment works if it applies, and declare site-level content signals. It does **not** state which specific URLs currently have markdown available, or what fraction of the site is covered.
 
@@ -238,7 +240,7 @@ A third network family — **MPP (Machine Payments Protocol, via Stripe/Tempo)**
 
 ### Authentication via Payment
 
-At high price points, payment transitions from a micropayment into an access token request. The flow:
+Where a publisher declares a section `access: "token"` in `/mdf.json`, payment transitions from a micropayment into an access token request. It is a per-section declaration, not a price band: a publisher can mark a cheap section as token-access and an expensive one as per-fetch. The flow:
 
 1. Agent requests the resource with `Accept: text/markdown` and receives a `402` stating a price of `$X` in `accepts[]` and, where this tier issues a credential rather than content, the auth endpoint in `extensions.mdf.info.auth_endpoint`
 2. Agent pays through one of the offered rails, then presents the payment on the resource URL in a `PAYMENT-SIGNATURE` header
@@ -524,7 +526,7 @@ The reference implementation is a self-hostable Docker image (`bitcryptic/mdf-se
 - Handles `Accept: text/markdown` content negotiation
 - Integrates x402 payment verification against configurable EVM chains
 - Integrates L402 payment verification against a configurable Lightning node or LSP endpoint
-- Issues and validates bearer tokens for high-price-tier access
+- Issues and validates bearer tokens for token-access sections
 - Exposes a simple dashboard: fetch counts, earnings by rail, content signal summary
 
 Target stack: Bun + Caddy or standalone Bun HTTP server, Docker image for Unraid/standard Docker deployment, configuration via a single `mdf.yaml`.
@@ -574,10 +576,6 @@ The following are explicitly unresolved and intended to drive community discussi
 ---
 
 12. **402 on paths with no resource** — Under a non-zero default price, payment gating runs before content lookup, so a `402` is returned for paths with nothing behind them exactly as for paths that exist. An agent cannot distinguish "this exists and costs money" from "this does not exist" without paying, and the 402 body's `resource` field names a URL with no content behind it. This may be intended — under price-as-access-policy, a site is arguably asserting that machine access to anything under a priced origin has a price — but it is currently emergent behaviour rather than a stated position. The reference implementation exhibits it: any path under its non-zero default returns a 402 offer. The cost to an agent is a wasted or failed payment attempt per non-existent path, scaling with how many URLs an agent is willing to guess. Options range from declaring this the intended semantics, to a distinguished response for absent resources, to leaving it as is.
-
-13. **`auth.price_threshold` across rails** — The auth tiers trigger on a price at or above `auth.price_threshold`, which is one decimal string. Prices are now per-rail atomic integers in different units, and this specification deliberately has no exchange rate, so there is no defined way to compare a threshold against them: is `"10.00"` ten dollars on whichever rail, an asset-unit count, or a per-rail threshold list? 0.3.0 leaves the field as it was and does not define the comparison; the auth path therefore needs a decision before an implementation can honour it across two rails.
-
-14. **`payment.accepted_networks` / `accepted_currencies` redundancy** — With `pricing.rails` naming a network and an asset per rail, the site-level `accepted_networks` and `accepted_currencies` lists are derivable from the price entries (plus any configured-but-currently-unpriced rail). Keeping them preserves an explicit capability claim that does not depend on every path being enumerated; dropping them removes a second source of truth. Retained in 0.3.0; a candidate for removal in a later release.
 
 
 ## How to Contribute
