@@ -6,6 +6,71 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-08 — **BREAKING**
+
+The 402 becomes an x402 v2 `PaymentRequired`. There is no v1 acceptance window and no dual output: 0.3.0 is a hard cut. Validators SHOULD still read v1 on third-party sites, but an MDF 0.3.0 server neither emits nor accepts v1.
+
+Drafted against `x402-foundation/x402` at commit `513dd66d2b3eb2388065f9923d81aa496e626082` (2026-11-06): `specs/x402-specification-v2.md` §5.1 and §5.1.2, `specs/transports-v2/http.md`, `specs/schemes/exact/scheme_exact_evm.md`, `specs/schemes/exact/scheme_exact_lnbtc.md`.
+
+### Breaking — specification
+
+- **The 402 body is an x402 v2 `PaymentRequired`.** `x402Version` is `2`; `resource` is an object; `accepts[]` carries one entry per rail; `extensions` carries MDF's fields. The same object MUST be carried base64-encoded in the `PAYMENT-REQUIRED` header, and body and header MUST agree field for field. 402s MUST be `Cache-Control: no-store` and MUST still carry `X-MDF-Version`. The "superset of x402 v1 `PaymentRequirements`" relationship is removed.
+- **MDF's own fields move into `extensions.mdf`.** The extension entry uses the structure x402 v2 defines for every extension — `info` plus `schema` — with snake_case members inside `info`: `version`, `expires_at` (both required), `price_summary` (required, derived from and required to agree with `accepts[]`), and optional `source_bytes`, `savings`, `auth_endpoint`, `token_estimate` / `token_estimate_note`. The extension never restates `amount`, `payTo` or `network`.
+- **CAIP-2 network ids replace chain names on the wire.** `base` → `eip155:8453`, `base_sepolia` → `eip155:84532`, `lightning` → `lnbtc:000000000019d6689c085ae165831e93`.
+- **Amounts are atomic integer strings.** `"0.01" USDC` becomes `"10000"` micro-USDC; Lightning amounts are millisatoshis.
+- **Lightning is x402 `exact` on `lnbtc`, not a bespoke L402 envelope.** One `accepts[]` entry, `asset: "BTC"`, `payTo` as the receiver's compressed secp256k1 public key, and `extra` carrying the invoice plus the scheme's request-binding fields. Invoice, binding and replay rules are the scheme spec's, not MDF's.
+- **Multi-rail is `accepts[]`.** One entry per configured rail; a degraded rail drops only its own entry. If no rail can be offered, the response is an error with `Retry-After`, not a 402 with an empty `accepts`.
+- **`PAYMENT-RESPONSE` is required on every paid 200, on every rail.** For `exact`/lnbtc, `transaction` is the invoice payment hash and `payer` is omitted. Paid 200s remain `Cache-Control: private, no-store`.
+- **Client payments use `PAYMENT-SIGNATURE`.** `X-PAYMENT` is not accepted.
+- **L402 is demoted to an optional compatibility challenge** (non-normative). A server MAY emit `WWW-Authenticate: L402` on Lightning-priced routes for BLIP-0026 clients; it is outside the x402 rules and does not affect `accepts[]`.
+- **`/mdf.json`: `chain` is a CAIP-2 network id.** The field name is unchanged in this release; only its values change.
+
+### Added — specification
+
+- `mdf-402.schema.json` is rewritten for the v2 shape: `x402Version` pinned to `2`, CAIP-2 pattern on `network`, `amount` as an atomic integer string, `resource` as an object, conditionals for the two defined rails, and `$defs.mdfExtension` / `$defs.mdfExtensionInfo` for the extension.
+- `examples/` — a USDC-only 402, a dual-rail 402, and a paid 200 `PAYMENT-RESPONSE` for each rail, with the validation procedure and recorded output.
+
+### Unchanged
+
+- Negotiation, `mdf.json`, `llms.txt` discovery, tiers, content signals, feeds and the auth-token concept.
+- `X-MDF-Version` keeps its value (`1`): it identifies the MDF protocol, not this specification's release number. Whether it should advance with the payment layer is an open question, not decided here.
+- The reference server, validator, WordPress plugin and deployments are out of scope for this release; they follow in #64, #58–#60.
+
+### Open questions carried by this release
+
+Placement of the non-payment 402 fields in `extensions.mdf.info` (#13), one invoice backing both x402 lnbtc and an L402 challenge (#14, Vikunja #54), per-rail pricing in `/mdf.json` (#15), and whether `X-MDF-Version` should advance. Recorded in `CONCEPT.md` and in the 0.3.0 draft PR.
+
+### Migrating from 0.2.x
+
+| 0.2.x | 0.3.0 |
+|---|---|
+| `payment` object | one `accepts[]` entry per rail |
+| `payment.chain: "base"` | `accepts[].network: "eip155:8453"` |
+| `payment.chain: "base_sepolia"` | `accepts[].network: "eip155:84532"` |
+| `payment.chain: "lightning"` | `accepts[].network: "lnbtc:000000000019d6689c085ae165831e93"` |
+| `payment.amount: "0.01"` (decimal) | `accepts[].amount: "10000"` (atomic integer) |
+| `payment.currency: "USDC"` | `accepts[].asset: "<USDC contract on that network>"` |
+| `payment.pay_to` | `accepts[].payTo` |
+| `payment.scheme: "exact"` | `accepts[].scheme: "exact"` |
+| `payment.max_timeout_seconds` | `accepts[].maxTimeoutSeconds` |
+| `payment.extra` | `accepts[].extra` |
+| `payment.rail` | removed — the network identifies the rail |
+| `payment.accepted_chains`, `payment.accepted_currencies` | removed from the 402; still in `/mdf.json` |
+| `payment.session_nonce` | removed |
+| `payment.expires_at` | `extensions.mdf.info.expires_at` |
+| `payment.invoice` (L402) | `accepts[].extra.invoice` (on the `lnbtc` entry) |
+| `payment.macaroon` (L402) | only on the optional L402 compatibility path |
+| `resource: "https://…"` (string) | `resource: { "url": "https://…" }` |
+| `source_bytes` | `extensions.mdf.info.source_bytes` |
+| `savings` | `extensions.mdf.info.savings` |
+| `auth_endpoint` | `extensions.mdf.info.auth_endpoint` |
+| `error` + `reason` | `error` (one human-readable string; the short machine label is gone) |
+| `mdf_version` (body) | `extensions.mdf.info.version` |
+| `X-PAYMENT` (client) | `PAYMENT-SIGNATURE` |
+| — | `PAYMENT-REQUIRED` (server, base64 of the same body) |
+
+Related: the schema's `mdf_version` pattern now also accepts a three-component version, so a document can declare `0.3.0`; the previous pattern accepted only `MAJOR.MINOR`.
+
 ## [0.2.8] - 2026-10-02
 
 Server-only release. No spec change; `VERSION` stays `0.2.0`. Vikunja #52.

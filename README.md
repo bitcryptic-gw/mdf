@@ -2,7 +2,8 @@
 
 > A proposal for a web content architecture where markdown is the source of truth, agents are first-class citizens, and access policy is expressed through price.
 
-**Status:** Draft (v0.2.0) · Seeking community feedback  
+**Status:** Draft (v0.3.0) · Seeking community feedback  
+**Payment layer:** x402 v2, with USDC on EVM chains and BTC over Lightning as its two settlement networks. 0.3.0 is a breaking change from 0.2.x — see [CHANGELOG.md](./CHANGELOG.md#migrating-from-02x).  
 **Authors:** Gary Walker / [BitCryptic™](https://bitcryptic.com) · Graham Hall / [Slepner](https://slepner.com.au)
 
 ---
@@ -16,7 +17,7 @@ AI agents are now among the most frequent consumers of web content, yet the web 
 - **Markdown-first authoring** — markdown is the source of truth; HTML is rendered from it for browsers, not the other way around
 - **Native agent serving** — `Accept: text/markdown` returns clean markdown at the same URL, no conversion middleware required
 - **Structured discovery** — `/mdf.json` advertises capabilities, pricing, and content signals in a machine-readable format that agents can query before fetching
-- **Price as access policy** — a single price field unifies open access, micropayment, and private/authenticated access into one continuous spectrum, using the x402 (EVM/stablecoin) and L402 (Bitcoin/Lightning) payment standards
+- **Price as access policy** — a single price field unifies open access, micropayment, and private/authenticated access into one continuous spectrum, settled through x402 v2 over USDC on an EVM chain or BTC over Lightning
 
 ## Two arguments, not one
 
