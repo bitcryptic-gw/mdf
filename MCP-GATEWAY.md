@@ -50,7 +50,7 @@ The primary tool, and the one that must out-compete the agent's built-in fetch.
 1. Resolve `/mdf.json` for the origin (cached, TTL-bounded). If absent, fall through to a plain fetch and return HTML — the tool MUST remain useful on non-MDF sites, or the model will not select it.
 2. Request the URL with `Accept: text/markdown`.
 3. On `200`: return markdown, plus a savings report derived from `source_bytes`.
-4. On `402`: read the payment offer and any `source_bytes` / `savings` fields. Apply the payment policy (§4). Pay and retry, or return the offer to the agent for a decision, or decline and fall back to an unpriced fetch.
+4. On `402`: read the payment offer from `accepts[]` (body or `PAYMENT-REQUIRED` header) and any `source_bytes` / `savings` from `extensions.mdf.info`. Apply the payment policy (§4). Pay and retry, or return the offer to the agent for a decision, or decline and fall back to an unpriced fetch.
 
 Returns content plus a small structured footer: bytes returned, `source_bytes`, estimated tokens saved, amount paid (if any), and remaining session budget.
 

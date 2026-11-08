@@ -49,9 +49,9 @@ Several initiatives have addressed pieces of this problem, but none provide a co
 
 **Cloudflare Markdown for Agents** (February 2026) productises content negotiation at the CDN edge, converting HTML to markdown in real time for any site behind Cloudflare. It adds `x-markdown-tokens` and `Content-Signal` headers. This is a conversion approach — it does not change the fact that HTML remains the source of truth, and it is tied to a single vendor's infrastructure.
 
-**x402** is an emerging HTTP payment protocol using the long-reserved `402 Payment Required` status code, designed for machine-to-machine micropayments over EVM-compatible crypto rails. It is not web-content-specific but provides exactly the payment primitive MDF needs for stablecoin and EVM-based payment flows.
+**x402** is an emerging HTTP payment protocol using the long-reserved `402 Payment Required` status code, designed for machine-to-machine micropayments over crypto rails — in v2, any network with a CAIP-2 identifier, including EVM chains and Bitcoin Lightning. It is not web-content-specific but provides exactly the payment primitive MDF needs.
 
-**L402** (formerly LSAT) is a complementary HTTP payment and authentication protocol built on Bitcoin's Lightning Network. It combines a Lightning invoice with a macaroon-based bearer credential, enabling sub-second, sub-cent micropayments without on-chain settlement latency. Like x402, L402 uses the `402 Payment Required` status code and is designed for machine-to-machine use. It is already supported by a growing ecosystem of Lightning-native services and tooling. MDF supports L402 as the Bitcoin-native payment rail alongside x402.
+**L402** (formerly LSAT) is a complementary HTTP payment and authentication protocol built on Bitcoin's Lightning Network. It combines a Lightning invoice with a macaroon-based bearer credential, enabling sub-second, sub-cent micropayments without on-chain settlement latency. Like x402, L402 uses the `402 Payment Required` status code and is designed for machine-to-machine use, and it is already supported by a growing ecosystem of Lightning-native services and tooling. MDF 0.3.0 settles Lightning through x402's `exact`/lnbtc scheme instead, and keeps L402 only as an optional compatibility challenge for L402-only clients.
 
 > **402index.io** is a protocol-agnostic directory of paid APIs across L402, x402, and MPP (Machine Payments Protocol, Stripe/Tempo-facilitated session-based settlement). It indexes and payment-verifies endpoints hourly and exposes an MCP server for agent discovery. It is useful prior art demonstrating real-world demand for the 402 ecosystem and a potential discoverability layer for MDF-enabled sites. MPP is acknowledged here as an emerging rail; MDF's rail-agnostic design accommodates it without spec changes, but it is not currently in scope.
 >
@@ -126,18 +126,19 @@ Example `/mdf.json`:
 
 ```json
 {
-  "mdf_version": "1.0",
+  "mdf_version": "0.3.0",
   "site": "https://example.com",
   "pricing": {
-    "default": { "amount": "0.0001", "currency": "USDC", "chain": "base" },
+    "default": { "amount": "0.0001", "currency": "USDC", "chain": "eip155:8453" },
     "sections": {
       "/docs/*": { "amount": "0.0000", "currency": null },
-      "/premium/*": { "amount": "1.0000", "currency": "USDC", "chain": "base" }
+      "/premium/*": { "amount": "1.0000", "currency": "USDC", "chain": "eip155:8453" },
+      "/micropayment/*": { "amount": "0.00000010", "currency": "BTC", "chain": "lnbtc:000000000019d6689c085ae165831e93" }
     }
   },
   "payment": {
     "endpoint": "https://example.com/mdf/pay",
-    "accepted_chains": ["base", "lightning"],
+    "accepted_chains": ["eip155:8453", "eip155:84532", "lnbtc:000000000019d6689c085ae165831e93"],
     "accepted_currencies": ["USDC", "BTC"]
   },
   "auth": {
@@ -157,6 +158,8 @@ Example `/mdf.json`:
   "llms_txt": "https://example.com/llms.txt"
 }
 ```
+
+`chain` in a price entry carries a CAIP-2 network id, not a chain name. A price entry still names one preferred rail for a section; expressing several equivalent rails for the same section is not yet decided (open question 15).
 
 `/mdf.json` is a **capability and mechanism** declaration — not a coverage index, not a price list. Its job is to state that a site supports `Accept: text/markdown` negotiation, describe how payment works if it applies (which rails are accepted, where the payment endpoint lives), and declare site-level content signals. It does **not** state which specific URLs currently have markdown available, what fraction of the site is covered, or what any individual resource costs.
 
@@ -194,23 +197,25 @@ This model has several useful properties:
 
 ### Payment Rails
 
-MDF is payment-rail-agnostic. Any mechanism that can produce a verifiable payment proof is compatible. Two protocols are the natural first implementations:
+MDF carries every rail as an x402 v2 payment requirement. One protocol, one set of wire rules, with the settlement network as the variable. Two networks are defined in 0.3.0:
 
-**x402** handles EVM-compatible chains (Base, Ethereum, Polygon, Solana) with stablecoin payments (USDC, USDT). It is well-suited to agents operating in a crypto-native or DeFi context, and to site operators who already manage EVM wallets.
+**USDC on an EVM chain** — x402's `exact` scheme on a CAIP-2 EVM network (`eip155:8453` Base mainnet, `eip155:84532` Base Sepolia), paying a stablecoin. Well-suited to agents operating in a crypto-native or DeFi context, and to site operators who already manage EVM wallets.
 
-**L402** handles Bitcoin via the Lightning Network. Lightning payments settle in sub-seconds at sub-cent fees with no on-chain transaction required. L402 pairs the Lightning invoice with a macaroon credential, so payment and access token issuance happen in a single round trip. It is well-suited to operators and agents in the Bitcoin ecosystem and to any use case where Lightning's payment finality and minimal trust assumptions are preferable to EVM settlement.
+**Bitcoin over Lightning** — x402's `exact` scheme on the `lnbtc` namespace (`lnbtc:000000000019d6689c085ae165831e93` mainnet), paying BTC denominated in millisatoshis. The client pays a BOLT11 invoice and returns its payment preimage; verification needs no access to the receiver's node. Lightning settles in sub-seconds at sub-cent fees with no on-chain transaction. Well-suited to operators and agents in the Bitcoin ecosystem and to any use case where Lightning's payment finality and minimal trust assumptions are preferable to EVM settlement.
 
-Sites advertise which rails they accept in `/mdf.json` via `payment.accepted_chains`. Agents select the rail their operator supports. Both protocols use the `402 Payment Required` response code, and MDF's payment flow is identical regardless of which rail executes it.
+Sites advertise which networks they accept in `/mdf.json`, and offer them per resource in the 402's `accepts[]`, one entry per rail. Agents select the entry their operator supports. The payment flow is identical whichever network settles.
 
-A third rail — **MPP (Machine Payments Protocol, via Stripe/Tempo)** — has emerged in the broader 402 ecosystem. MPP is a session-based fiat settlement option facilitated by Stripe or Tempo rather than a decentralised payment network. It is not currently in scope but is acknowledged as a future extension point. MDF's payment-rail-agnostic design means MPP could be added without architectural changes — a site would simply advertise it in `payment.accepted_chains` and implement the corresponding verification logic.
+**L402 is no longer the Lightning rail.** Lightning is paid through x402 `exact`/lnbtc, with the same `PAYMENT-SIGNATURE` / `PAYMENT-REQUIRED` / `PAYMENT-RESPONSE` headers as the EVM rail. A BLIP-0026 L402 challenge survives only as an optional, non-normative compatibility path for Lightning-native clients — see Optional L402 Compatibility below.
+
+A third network family — **MPP (Machine Payments Protocol, via Stripe/Tempo)** — has emerged in the broader 402 ecosystem. MPP is a session-based fiat settlement option facilitated by Stripe or Tempo rather than a decentralised payment network. It is not currently in scope, but the shape of 0.3.0 makes it an addition rather than a redesign: it would arrive as an `accepts[]` entry with its own scheme and network identifier, not as a second protocol beside x402.
 
 ### Authentication via Payment
 
 At high price points, payment transitions from a micropayment into an access token request. The flow:
 
-1. Agent requests the resource with `Accept: text/markdown` and receives a `402` stating a price of `$X`, a payment endpoint, and (where this tier issues a credential) an auth endpoint
-2. Agent sends payment transaction to the payment endpoint named in that response
-3. Site verifies payment — for x402, by calling a standard x402 facilitator's `/verify` and (on success) `/settle` endpoints with the payload the client submitted; for L402, by confirming Lightning invoice settlement directly — and issues a time-limited bearer token
+1. Agent requests the resource with `Accept: text/markdown` and receives a `402` stating a price of `$X` in `accepts[]` and, where this tier issues a credential rather than content, the auth endpoint in `extensions.mdf.info.auth_endpoint`
+2. Agent pays through one of the offered rails, then presents the payment on the resource URL in a `PAYMENT-SIGNATURE` header
+3. Site verifies payment — for the EVM rail, by calling a standard x402 facilitator's `/verify` and (on success) `/settle`; for the Lightning rail, by verifying the invoice preimage locally and settling through the facilitator, per the lnbtc scheme — and issues a time-limited bearer token
 4. Agent includes bearer token in subsequent `Authorization` header for markdown fetches
 5. Site serves markdown to token-bearing requests without further payment per fetch (or per session, per volume — owner configurable)
 
@@ -226,25 +231,94 @@ The reference server's `[oracle]` configuration block from earlier drafts is ren
 
 Until now the 402 flow has been described in prose only, and the only schematised artefact in this repo has been `/mdf.json`. That was tenable while MDF was a supply-side proposal. It is no longer, because the 402 body is the one part of the wire format that arrives at a consumer from an arbitrary origin and may cause that consumer to spend money.
 
-`mdf-402.schema.json` describes the JSON body a server emits alongside a `402 Payment Required` response to an `Accept: text/markdown` request. It is a description of server output, not a constraint on consumers — nothing in this specification requires a consumer to validate against it, and the schema exists so that those who choose to have something to validate against.
+**A 402 body is an x402 v2 `PaymentRequired` object, and nothing else.** MDF defines no payment envelope of its own: `mdf-402.schema.json` validates a document that a standard x402 v2 client can parse without knowing that MDF exists. MDF's own fields travel in the v2 `extensions` map (see The `mdf` Extension, below). This section is drafted against the x402 v2 specification at commit `513dd66d2b3eb2388065f9923d81aa496e626082` (2026-11-06): `specs/x402-specification-v2.md` §5.1 (`PaymentRequired`) and §5.1.2 (field descriptions), and `specs/transports-v2/http.md`.
 
-The only field a server must emit is `payment`, carrying at minimum an `endpoint`, an `amount` and a `currency`. Everything else is optional, including the diagnostic `error` and `reason` strings, the `source_bytes` and `savings` fields described below, and `auth_endpoint` where payment at this tier issues a credential rather than delivering content.
+A 402 response MUST satisfy all of the following.
+
+- **Body.** The body MUST be a valid x402 v2 `PaymentRequired`: `x402Version` MUST be `2`; `resource` MUST be an object; `accepts` MUST contain at least one payment requirement. `error` is optional. `extensions` is optional in x402 itself but MDF requires it, because MDF's own fields live there.
+- **Header.** The same object MUST also be carried, base64-encoded, in the `PAYMENT-REQUIRED` response header, the canonical transport location in x402 v2. Body and header MUST be the same JSON object, field for field. A consumer that reads either MUST reach the same offer, and a server MUST NOT send a body that differs from the header it sends with it.
+- **Cache.** The response MUST carry `Cache-Control: no-store`. An offer contains something payable — an authorization window, or a live Lightning invoice — and a shared cache that stores it turns one offer into a replay surface.
+- **Identity.** The response MUST carry `X-MDF-Version`, as for any other response the MDF layer handles.
+- **Non-empty.** `accepts` MUST NOT be empty. Where a server cannot currently offer any rail, it MUST NOT emit a 402 with nothing to pay; it MUST return an error response with `Retry-After` instead (see Rails, below).
+
+`mdf-402.schema.json` describes this output. It is a description of server output, not a constraint on consumers — nothing in this specification requires a consumer to validate against it, and the schema exists so that those who choose to have something to validate against.
 
 Five points warrant explanation rather than schema.
 
-**Amounts are strings.** `payment.amount` is a decimal string, not a JSON number. Binary floating point cannot represent common decimal amounts exactly, and a payment protocol is the last place to accept that rounding.
+**Amounts are atomic integer strings.** `accepts[].amount` is the integer amount in the asset's smallest unit — micro-USDC for a 6-decimal stablecoin, millisatoshis for Lightning — as a decimal string with no sign, decimal point, exponent, separator or unit suffix. Binary floating point cannot represent common decimal amounts exactly, and a payment protocol is the last place to accept that rounding. There is no second numeric field: the human-readable price is `price_summary`, and it is a string for people, not a value for arithmetic.
 
-**The `payment` object mixes two scopes.** `amount`, `currency` and `chain` describe *this offer for this resource*. `accepted_chains` and `accepted_currencies` describe *what the site accepts in general* — the same mechanism `/mdf.json` declares. Repeating site capability in the 402 saves a consumer a round trip and is worth keeping, but the two scopes are not distinguished structurally, and a consumer must not read `accepted_chains` as a set of rails available for the resource at hand. The offer is what `amount`, `currency` and `chain` say it is.
+**Networks are CAIP-2 identifiers, and the offer is `accepts` alone.** `accepts[].network` is a CAIP-2 network id, `namespace:reference`. MDF 0.3.0 uses `eip155:8453` (Base mainnet), `eip155:84532` (Base Sepolia), and `lnbtc:000000000019d6689c085ae165831e93` (Bitcoin mainnet, Lightning). Chain names — `base`, `ethereum`, `lightning` — no longer appear on the wire. Nor does a 402 repeat the site's accepted chains and currencies: `accepts[]` is exactly the set of ways this resource can be paid for right now, and a consumer whose rail is absent must treat the resource as unavailable to it, not as payable by some other means the site happens to support.
 
-**Rail is declared, but remains optional.** The reference server emits `payment.rail` alongside `chain`, derived from the same branch that selects the payment verifier rather than from a second mapping table. The field is nonetheless optional in the schema, because inferring rail from `chain` — `base` and `ethereum` implying x402, `lightning` implying L402 — is workable and was the only option available before this was implemented. That inference breaks the moment two rails share a settlement network, which MPP settling on an EVM chain would immediately cause, so servers are encouraged to declare rail explicitly and consumers should prefer the declared value where present.
+**`extensions` carries MDF's own fields.** x402 v2 reserves `extensions` for exactly this: protocol extensions that do not fit the core payment object. MDF's key is `mdf`, and its contents are defined under The `mdf` Extension below. Keeping MDF's fields there is what makes the 402 parseable by a client that has never heard of MDF, and it means MDF never has to translate between its own field names and x402's on the payment path.
 
-**For the x402 rail, the payment object is a strict superset of x402's `PaymentRequirements`.** Alongside MDF's own `amount`/`currency`/`chain` (kept for human readability and rail-agnostic display), servers offering x402 payment MUST also emit `pay_to`, `asset` (as the token's contract address, not a symbol), `scheme`, and `max_timeout_seconds` — the exact fields a standard x402 facilitator's `/verify` and `/settle` endpoints expect, so that verification can be delegated to any compliant facilitator without a translation layer. `extra` carries any scheme-specific data a facilitator needs (e.g. a Solana `exact` payment's fee payer) and is passed through opaquely by MDF servers rather than interpreted. This does not apply to `l402` or `mpp` offers, which have no equivalent concepts.
-
-**Payment endpoints should be same-origin.** A server SHOULD declare a `payment.endpoint` on the same origin as the resource being priced. Where a server declares a cross-origin endpoint, it should expect some consumers to decline the offer: an instruction arriving from one origin directing payment to another is indistinguishable, from the consumer's position, from an injected instruction. Operators with a genuine need for a separate payment host — a shared billing service across several properties — should anticipate that this requires explicit configuration on the consumer side rather than working unattended. The same trust boundary appears in a different guise in open question 9.
-
-**Two fields close gaps a consumer cannot close for itself.** `resource`, the absolute URL being priced, is the one piece of a 402 that cannot be reconstructed once the response is separated from the request that produced it — queued, retried, logged, or passed between processes. `payment.expires_at` states how long the offer stands; without it, any consumer that defers a payment is guessing at the validity of what it holds. Both are emitted by the reference server, the latter derived from the same window the `session_nonce` was already bound to rather than from a newly invented lifetime.
+**Offer validity is stated, not inferred.** `resource.url`, the absolute URL being priced, is the one piece of a 402 that cannot be reconstructed once the response is separated from the request that produced it — queued, retried, logged, or passed between processes. `extensions.mdf.info.expires_at` states how long the offer stands; without it, any consumer that defers a payment is guessing at the validity of what it holds. Both are required. `expires_at` is the offer's own window, not a rail's: where a rail carries a shorter bounded validity of its own — the Lightning invoice's expiry, which the lnbtc scheme requires to equal that entry's `maxTimeoutSeconds` — the offer MUST NOT outlive it.
 
 Numeric fields in the schema are bounded. This is not pedantry: the values are supplied by the responding origin, and an implausible `source_bytes` fed into a consumer's own cost calculation is a cheap way to manipulate that consumer's spending decision.
+
+#### The `mdf` Extension
+
+x402 v2 defines an extension entry as an object with two required members: `info`, the extension's data, and `schema`, a JSON Schema describing that `info`. MDF uses exactly that structure, under the key `mdf`.
+
+```json
+"extensions": {
+  "mdf": {
+    "info": {
+      "version": "0.3.0",
+      "source_bytes": 48213,
+      "expires_at": "2026-11-08T12:00:00Z",
+      "price_summary": "0.01 USDC on Base (eip155:8453)"
+    },
+    "schema": { "type": "object", "description": "see below" }
+  }
+}
+```
+
+Members of `info` are snake_case. That is MDF's own naming, and it applies only inside the extension; the surrounding x402 member names are not renamed.
+
+| Member | Required | Meaning |
+|---|---|---|
+| `version` | yes | The MDF specification version this response conforms to, as `MAJOR.MINOR.PATCH`. |
+| `expires_at` | yes | RFC 3339 timestamp after which this offer is no longer valid. |
+| `price_summary` | yes | Human-readable price summary, derived from `accepts[]`. |
+| `source_bytes` | no | Byte length of the resource's rendered-HTML representation, as defined under Response Value Signalling. |
+
+**`price_summary` is derived, and MUST agree with `accepts[]`.** It exists so a human — or a log reader, or a model deciding whether to spend — can see the price without decoding an `accepts` array. It MUST describe the same rails and amounts that `accepts[]` states, and a server MUST regenerate it whenever `accepts[]` changes. It carries no structured `amount`, `payTo` or `network` member of its own: those are stated once, in `accepts[]`, and the extension never restates them in machine-readable form. Where the two could disagree, `accepts[]` is authoritative and the summary is the defect.
+
+`schema` is a JSON Schema describing `info`. The authoritative copy is published in `mdf-402.schema.json` (`$defs/mdfExtensionInfo`); the copy embedded in a live response MUST describe the `info` object that server actually emits. `mdf-402.schema.json` validates both the x402 core members and the `mdf` extension entry.
+
+The MDF response fields with no x402 core equivalent — `savings`, `auth_endpoint`, and the optional `token_estimate` / `token_estimate_note` pair — also live in `info`, as optional members. They are described under Response Value Signalling and in open question 13.
+
+#### Rails
+
+MDF 0.3.0 supports two settlement networks under one x402 protocol. A server offers one `accepts[]` entry per configured rail: `accepts[]` is where a multi-rail offer is expressed, and there is no separate multi-rail mechanism.
+
+**USDC on an EVM chain.** `scheme` MUST be `exact`; `network` MUST be an EVM CAIP-2 id — `eip155:8453` for Base mainnet or `eip155:84532` for Base Sepolia; `asset` MUST be the USDC contract address on that network; `amount` is in micro-USDC; `payTo` is the receiving EVM address; `extra` carries the scheme's EIP-712 domain data (`name`, `version`). Verification and settlement follow `specs/schemes/exact/scheme_exact_evm.md` through any compliant facilitator's `/verify` and `/settle`.
+
+**Bitcoin over Lightning.** `scheme` MUST be `exact`; `network` MUST be `lnbtc:000000000019d6689c085ae165831e93` (Bitcoin mainnet, per the `lnbtc` namespace in the scheme spec); `asset` MUST be `"BTC"`; `amount` is in millisatoshis; `payTo` is the receiving node's compressed secp256k1 public key; `extra` carries the invoice and the request binding. Invoice construction and validation, the description-hash binding, the preimage proof, single-use settlement and the durable replay store are defined by `specs/schemes/exact/scheme_exact_lnbtc.md`, and are referenced here rather than restated. MDF does not define its own Lightning replay rules: the scheme's `network:payment_hash` consumption key is the rule.
+
+**A degraded rail is omitted; it does not fail the offer.** Rails fail independently. Where one rail cannot currently produce a payable requirement — the Lightning backend is unreachable, the facilitator does not support the configured EVM network, an invoice cannot be minted — the server MUST omit that rail's entry and MUST still emit the others. It MUST NOT emit a requirement it cannot fulfil, and it MUST NOT substitute a placeholder or a stale invoice. A consumer sees the reduced `accepts[]` and selects from it. If no rail can be offered, the response is an error with `Retry-After`, not a 402.
+
+**Rails do not borrow each other's identity.** Each entry is self-contained: its own `payTo`, its own `amount`, its own `extra`. A consumer MUST NOT infer one entry's terms from another.
+
+An `accepts[]` entry on a network or scheme this specification does not define is outside MDF 0.3.0. A consumer SHOULD skip an entry it does not recognise and use one it does, rather than failing the whole offer.
+
+#### Paid Responses
+
+A paid response is an ordinary `200` carrying the negotiated markdown. Every x402 rail — including Lightning — MUST carry `PAYMENT-RESPONSE`.
+
+**`PAYMENT-RESPONSE` is required on every paid 200, for every rail.** The header carries a base64-encoded x402 v2 `SettlementResponse`. On an EVM rail, `transaction` is the settlement transaction hash, `network` is the CAIP-2 network id, and `payer` is the paying address where known. On the Lightning rail, the lnbtc scheme defines the fields: `transaction` is the invoice's payment hash (settlement moves no funds and broadcasts no transaction), `network` is the lnbtc id, and `payer` MUST be omitted, because Lightning reveals no stable payer address. A paid 200 that omits `PAYMENT-RESPONSE` is non-conformant, on either rail.
+
+**Paid 200s remain `Cache-Control: private, no-store`.** The response is one buyer's content and, at the auth tiers, one buyer's entitlement. x402 v2 says nothing about caching paid responses, so MDF's existing position stands.
+
+#### Client Request Header
+
+A paying client sends its payment in the `PAYMENT-SIGNATURE` request header, a base64-encoded x402 v2 `PaymentPayload`. The v1 header name `X-PAYMENT` is not part of MDF 0.3.0 and MUST NOT be accepted as a fallback: **MDF 0.3.0 servers are x402 v2 only.** A server MAY reject a v1-shaped payload with `402` and a fresh v2 offer; it MUST NOT attempt to verify one.
+
+#### Optional L402 Compatibility (non-normative)
+
+This section is informative. It does not extend the x402 rules above.
+
+Some Lightning-native clients — `lnget` and Aperture among them — speak BLIP-0026 L402 rather than x402. A server MAY additionally emit an `WWW-Authenticate: L402` challenge on Lightning-priced routes so those clients can pay. That challenge is outside every rule in this section: it is not an `accepts[]` entry, it does not change the `PaymentRequired` object, and it does not relax the requirement that a paid x402 200 carries `PAYMENT-RESPONSE`. Whether one invoice can back both an x402 `exact`/lnbtc requirement and an L402 challenge is unresolved (open question 14); until it is, a server offering both should assume one invoice per flow.
 
 ### Response Value Signalling
 
@@ -252,11 +326,11 @@ Two related but independent signals let agents make better-informed decisions ab
 
 **`source_bytes`** — the byte length of the resource's rendered-HTML representation: the page as a browser or naive scraper would receive it. A server that holds HTML computes this directly; a server that generates HTML from another source (e.g. markdown) renders it to measure. Either way it is a single, conversion-independent fact about the page. Servers **SHOULD** include `source_bytes` on any response where pricing or payment is involved, and **MAY** include it on unpriced responses as a general-purpose size signal.
 
-**`savings`** — a comparison between a resource's HTML representation and its markdown representation, available only once a server actually performs on-server HTML-to-markdown conversion for that resource. Where `source_bytes` is a standalone fact about the resource's HTML representation, `savings` requires both representations to exist. Servers **may** include a `savings` object in the `402 Payment Required` response body (and optionally on `200`-with-markdown responses) once they have both values in hand, giving agents a concrete efficiency signal alongside price rather than evaluating price in isolation.
+**`savings`** — a comparison between a resource's HTML representation and its markdown representation, available only once a server actually performs on-server HTML-to-markdown conversion for that resource. Where `source_bytes` is a standalone fact about the resource's HTML representation, `savings` requires both representations to exist. Servers **may** include a `savings` object in `extensions.mdf.info` of a `402 Payment Required` response (and optionally on `200`-with-markdown responses) once they have both values in hand, giving agents a concrete efficiency signal alongside price rather than evaluating price in isolation.
 
 Both are optional but recommended, not required — a server is fully MDF-compliant without emitting either. `source_bytes` has the lower implementation bar and may reasonably be adopted first; `savings` is naturally a later addition for servers that already perform conversion. Neither is a pricing mechanism, a coverage claim, or a capability declared in advance in `/mdf.json` — both are computed and disclosed per-response, at request time, exactly like price itself.
 
-**Shape:**
+**Shape** — both members sit in `extensions.mdf.info` on a 402, and at the top level of a `200`-with-markdown response:
 
 ```json
 "source_bytes": 48213
@@ -274,7 +348,7 @@ Both are optional but recommended, not required — a server is fully MDF-compli
 - `markdown_bytes` — byte length of the served markdown representation.
 - `reduction_pct` — `(1 - markdown_bytes / source_bytes) * 100`, rounded to one decimal place.
 
-When both `source_bytes` and `savings` are present in the same response, `savings.source_bytes` should match the top-level `source_bytes` value — they describe the same measurement, exposed at two levels of detail for convenience.
+When both `source_bytes` and `savings` are present in the same response, `savings.source_bytes` should match the sibling `source_bytes` value — they describe the same measurement, exposed at two levels of detail for convenience.
 
 Byte-size reduction is the primary, defensible metric for `savings`: it is directly measurable from what the server already holds, with no tokenizer assumptions and no dependency on which model or vendor's tokenizer the requesting agent uses. Servers may additionally report an approximate token estimate, but if they do, it must be clearly labelled as a heuristic (e.g. an accompanying `token_estimate_note` describing the method, such as a chars/4 approximation), never presented as an authoritative count — actual token counts vary by tokenizer and cannot be verified for an arbitrary requesting agent.
 
@@ -407,7 +481,7 @@ This allows agents to make intelligent re-fetch decisions based on change type r
 - **Not a new protocol.** MDF uses HTTP throughout. No new URL scheme, no new transport layer, no new port.
 - **Not a Cloudflare replacement.** MDF is infrastructure-agnostic. A Caddy plugin, an Nginx module, a Node middleware, or a CDN feature can all implement it.
 - **Not a DRM system.** MDF cannot prevent determined scrapers. It creates a standard, economic incentive for compliant behaviour and an audit trail for non-compliant behaviour.
-- **Not prescriptive about payment rails.** The spec defines the interface; x402 over EVM chains and L402 over Lightning are the natural first implementations, but any payment rail that can produce a verifiable payment proof is compatible.
+- **Not prescriptive about settlement networks.** The spec defines the interface through x402 v2; USDC on an EVM chain and BTC over Lightning are the two networks defined in 0.3.0, and any network x402 can address is compatible.
 - **Not dependent on any particular client.** MDF is implemented by servers. A consumer needs only standard HTTP content negotiation to participate. The reference client described in `MCP-GATEWAY.md` is one convenience implementation, not a requirement, and not a gatekeeper.
 
 ---
@@ -444,7 +518,7 @@ This positions BitCryptic Compute not only as an AI inference marketplace but as
 
 The following are explicitly unresolved and intended to drive community discussion:
 
-1. **Payment rail standardisation** — Should the spec recommend a default rail (x402 on Base? L402 on Lightning?), or remain fully agnostic? Agnosticism is cleaner but creates interoperability friction for agent implementors who must support multiple rails. A third rail, MPP (Machine Payments Protocol, Stripe/Tempo-facilitated session-based settlement), has emerged in the broader 402 ecosystem — MDF's rail-agnostic design accommodates it without spec changes but it is not yet formally in scope.
+1. **Network standardisation** — MDF now carries every rail through x402 v2, so the open question is narrower than it was: not which protocol, but which settlement networks are required or recommended. Should a spec-conformant server be expected to offer an EVM stablecoin rail, a Lightning rail, or either? Agnosticism is cleaner but creates interoperability friction for agent implementors who must support both. A third network family, MPP (Machine Payments Protocol, Stripe/Tempo-facilitated session-based settlement), has emerged in the broader 402 ecosystem — the `accepts[]` shape accommodates it, but it is not yet formally in scope.
 
 2. **Receipt verification (L402)** — How does a site verify Lightning payment without running a full node? Trust an LSP, run a lightweight Lightning node, or verify macaroon credentials independently. (The equivalent question for x402 is resolved by the Facilitator Configuration section above: verification is delegated to a standard x402 facilitator's `/verify` endpoint, which handles on-chain confirmation on the server's behalf.)
 
@@ -471,6 +545,12 @@ The following are explicitly unresolved and intended to drive community discussi
 ---
 
 12. **402 on paths with no resource** — Under a non-zero default price, payment gating runs before content lookup, so a `402` is returned for paths with nothing behind them exactly as for paths that exist. An agent cannot distinguish "this exists and costs money" from "this does not exist" without paying, and the 402 body's `resource` field names a URL with no content behind it. This may be intended — under price-as-access-policy, a site is arguably asserting that machine access to anything under a priced origin has a price — but it is currently emergent behaviour rather than a stated position. The reference implementation exhibits it: any path under its non-zero default returns a 402 offer. The cost to an agent is a wasted or failed payment attempt per non-existent path, scaling with how many URLs an agent is willing to guess. Options range from declaring this the intended semantics, to a distinguished response for absent resources, to leaving it as is.
+
+13. **Placement of MDF's non-payment 402 fields** — `savings`, `auth_endpoint`, `token_estimate` and `token_estimate_note` have no x402 v2 core equivalent and no top-level place in a `PaymentRequired` object. MDF 0.3.0 puts them in `extensions.mdf.info` as optional members, beside `version`, `expires_at`, `source_bytes` and `price_summary`. That is the only home a valid v2 `PaymentRequired` offers, but the grouping is a decision worth confirming: splitting them into a second extension key (`mdf.content`), or moving the efficiency signals to the `200`-with-markdown response only, are both defensible alternatives.
+
+14. **One Lightning invoice for both an x402 requirement and an L402 challenge** — If a server offers an L402 `WWW-Authenticate` challenge alongside its x402 `exact`/lnbtc `accepts[]` entry, can a single BOLT11 invoice back both? The two flows commit different things to the invoice: x402 lnbtc requires a request-hash description hash and a `network:payment_hash` consumption record, while BLIP-0026 L402 pairs the invoice with a macaroon and its own expiry-bounded replay behaviour. Whether sharing is safe, and which flow owns the replay record, is unresolved; until it is settled a server offering both should issue one invoice per flow. Tracked as Vikunja #54.
+
+15. **Per-rail pricing in `/mdf.json`** — A 402 expresses every configured rail in `accepts[]`, but `/mdf.json`'s `pricing` entries still carry one `amount`, `currency` and `chain` per section. A site that wants to price the same section in USDC and in BTC currently has to name one rail in the discovery document and let the 402 reveal the rest. Adding a per-rail array (e.g. `rails: [{ network, asset, amount }]`) would make discovery match the offer, but it changes how `pricing` is read, how `pricing_all_free` is evaluated, and how a price is turned into a `price_threshold` comparison for the auth tiers. Not implemented in 0.3.0; see the migration note in the CHANGELOG.
 
 ## How to Contribute
 
