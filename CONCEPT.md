@@ -122,7 +122,7 @@ MDF extends the llms.txt convention. An MDF-compliant site serves two discovery 
 - `/mdf.json` — machine-readable MDF capability document (MUST), advertising:
   - Supported content types
   - Default and per-section pricing
-  - Accepted payment methods/chains
+  - Accepted payment networks (CAIP-2) and the rails offered per path
   - Auth token endpoint (if applicable)
   - Site-level content signals (training consent, search consent, etc.)
 
