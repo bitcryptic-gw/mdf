@@ -31,6 +31,7 @@ Drafted against `x402-foundation/x402` at commit `513dd66d2b3eb2388065f9923d81aa
 - **The 402 must agree with `/mdf.json`.** The `accepts[]` entries a server emits for a resource MUST correspond one-to-one to the rails declared for that resource's path, with identical scheme, network, asset and amount, minus any rail that is degraded.
 - **`expires_at` is optional (SHOULD).** `maxTimeoutSeconds`, and on the lnbtc rail the BOLT11 invoice expiry that must equal it, already bound when an offer can be paid.
 - **`X-MDF-Version` stays `1`.** It marks the protocol family; the precise spec version is `extensions.mdf.version` and `mdf_version`, and a 402 identifies its payment version through `x402Version: 2`.
+- **Examples correction, no version bump.** The mainnet examples (`eip155:8453`) set `extra.name` to `"USD Coin"`, the token's EIP-712 domain name on Base mainnet, instead of `"USDC"`. Base Sepolia keeps `"USDC"` (`defaultAssets.ts` at x402 `513dd66`). A wrong name is not cosmetic: EIP-3009 signatures are bound to the EIP-712 domain, so they fail verification. No spec text, schema or version change.
 
 ### Added — specification
 

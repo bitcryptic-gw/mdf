@@ -21,7 +21,7 @@
       "maxTimeoutSeconds": 300,
       "extra": {
         "assetTransferMethod": "eip3009",
-        "name": "USDC",
+        "name": "USD Coin",
         "version": "2"
       }
     }
