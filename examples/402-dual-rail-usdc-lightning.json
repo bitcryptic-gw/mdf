@@ -16,7 +16,7 @@
       "scheme": "exact",
       "network": "eip155:8453",
       "amount": "1000",
-      "asset": "0x1111111111111111111111111111111111111111",
+      "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
       "payTo": "0x3333333333333333333333333333333333333333",
       "maxTimeoutSeconds": 300,
       "extra": {

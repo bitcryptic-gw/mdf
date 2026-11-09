@@ -4,9 +4,13 @@ Complete, schema-valid examples for MDF 0.3.0. Each one is written against
 x402 v2 at `x402-foundation/x402` commit `513dd66d2b3eb2388065f9923d81aa496e626082`
 (2026-11-06).
 
-> **Every value here is fabricated.** The addresses, public key, invoice,
-> request hash, payment hash and transaction hash are placeholders chosen to be
-> obviously fake and are not payable, resolvable or attributable to anyone. The
+> **Everything here is illustrative except the token contracts.** The `asset`
+> addresses are the real, public USDC contracts on Base mainnet and Base
+> Sepolia (`defaultAssets.ts` at x402 `513dd66`), because a made-up contract
+> would make the offers unverifiable and hide EIP-712 domain mistakes. Every
+> other identifier — `payTo`, the Lightning public key, invoice, request hash,
+> payment hash, transaction hash, wallet — is a placeholder chosen to be
+> obviously fake, and is not payable, resolvable or attributable to anyone. The
 > service name and URLs use `example.com`, which is reserved for documentation.
 > The invoice is not a decodable BOLT11 string.
 
