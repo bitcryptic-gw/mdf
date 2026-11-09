@@ -1,14 +1,14 @@
 {
   "mdf_version": "0.3.0",
   "site": "https://example.com",
-  "name": "Example MDF Site — token tier (fabricated example)",
+  "name": "Example MDF Site \u2014 token tier (fabricated example)",
   "pricing": {
     "default": {
       "rails": [
         {
           "scheme": "exact",
           "network": "eip155:8453",
-          "asset": "0x1111111111111111111111111111111111111111",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
           "amount": "100"
         }
       ]
@@ -22,7 +22,7 @@
           {
             "scheme": "exact",
             "network": "eip155:8453",
-            "asset": "0x1111111111111111111111111111111111111111",
+            "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
             "amount": "100000000"
           }
         ],
