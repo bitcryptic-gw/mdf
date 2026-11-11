@@ -115,6 +115,23 @@ A price entry is now a list of rails rather than a single price, so a section th
 
 Related: the schemas' `mdf_version` pattern now also accepts a three-component version, so a document can declare `0.3.0`; the previous pattern accepted only `MAJOR.MINOR`.
 
+## [0.2.9] - 2026-11-11 — **security**
+
+Server-only release. No spec change; `VERSION` stays `0.3.1`. Fixes the token-tier payment bypass found during #64 Stage A.
+
+### Fixed — reference server
+
+- **`POST /mdf/auth` issued a bearer token with no payment at all (security).** Since the endpoint was introduced, `handleAuthRequest()` minted a 24-hour token for **any** path supplied in the request body, without verifying a payment. `/mdf.json` publishes that endpoint as `auth.endpoint`, so the token-gated tier (`/private/**`, 0.10 USDC, **Base mainnet, real money**) was free to anyone who read `/mdf.json`: mint a token for the section, then present it as `Authorization: Bearer`. The endpoint now issues a token **only** after a valid payment for the token-access section in the same request. `<auth.endpoint>` and `/mdf/pay` share one handler that requires `X-PAYMENT`, runs the ordinary `verifyPayment()` → facilitator `/verify` → `/settle` path (including the #52 replay hardening, unchanged), and refuses a token for a path that is not a token-access section, before any facilitator call. The token's scope is derived from the paid path, so it authorises exactly that section. The payer and transaction recorded against the token now come from the verified settlement, never from the request body; `txHash`/`from` sent by a client are ignored. `handleAuthRequest()` is removed, so no other route can mint. Bad, missing or replayed payment → `402` with the normal offer and no token; facilitator failure → `503` and no token. Token comparison remains timing-safe (`timingSafeEqual`); nothing about issuance, scope or TTL semantics changed otherwise.
+
+### Changed — reference server
+
+- **Token issuance is limited to token-access sections.** A payment presented to a token endpoint for a per-fetch section is refused with `400` and is never sent to the facilitator, so the endpoint cannot be used as a general-purpose pay relay.
+- **Known limitation, deferred to 0.3.0 (#64): the token store is per-process.** Behind a round-robin pool (the demo runs two instances) a token may only be accepted by the instance that issued it, and a restart drops all tokens. Unchanged by this release and stated here so it is not mistaken for a regression; the 0.3.0 rewrite moves the store to shared storage.
+
+### Added — reference server
+
+- **`src/auth/auth-pay.test.ts`** (13 tests): unpaid `POST /mdf/auth` → `402` with the normal offer and no token; unpaid `/mdf/pay` likewise; `GET` → `405`; a paid request mints a token scoped to the paid section and serves it end to end; a token does **not** authorise another token section (both `validateToken` and a live `402` through the router); a replayed (already-settled) payment → `402`, no token, never reaching `/settle`; a facilitator failure → `503`, no token; a per-fetch section → `400` with no facilitator call; missing `resource` → `400`; an oversized body → `413`; a client-asserted `txHash`/`from` is ignored in favour of the verified settlement; wrong or malformed token secrets are rejected. Shown to fail against the 0.2.8 code (8 of 13) before the fix. Server-only; no spec change, `VERSION` unchanged.
+
 ## [0.2.8] - 2026-10-02
 
 Server-only release. No spec change; `VERSION` stays `0.2.0`. Vikunja #52.
