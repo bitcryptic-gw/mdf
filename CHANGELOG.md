@@ -6,6 +6,25 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-11 — **non-breaking**
+
+A rail whose `scheme` is not `exact` can now be declared. The change only loosens the schemas: every 0.3.0-conformant document and 402 body is still conformant, and nothing 0.3.0 accepted is now rejected. Vikunja #68 (spec) and #69 (validator).
+
+Written against the ProofLines case (`mdf-57-prooflines-mdf-json-draft-2026-11-11`): a real x402 v2 site selling a native-MON rail under its own scheme. Under 0.3.0 that rail was inexpressible — the eip155 branch forced `scheme: exact` and a `0x…` asset — so no conformant `/mdf.json` could describe what the site actually offered, and the one-to-one rule made the omission a divergence. Decision 26 resolves it.
+
+### Changed — specification
+
+- **The eip155 `asset` rule applies to `exact` only.** `mdf.schema.json#/$defs/price_rail`'s eip155 conditional now fires only when `network` matches `^eip155:` **and** `scheme` is `"exact"`; there it still requires a 0x address. The "eip155 forces `scheme: exact`" constraint is removed, so a non-`exact` scheme may name a rail on an eip155 network.
+- **A non-`exact` scheme defines its own asset identifier.** For any scheme other than `exact`, `asset` is an opaque, bounded string (`^[A-Za-z0-9:._/-]{1,128}$`) that MDF does not interpret; for `exact` the previous forms are unchanged (a 0x address on eip155, `BTC` on lnbtc, or an uppercase symbol). No new field is added — `scheme` and `asset` are read together.
+- **`mdf-402.schema.json` follows the same rule**, because an `accepts[]` entry is where a rail is first offered: its eip155 conditional and its base `asset` rule are scoped to `exact`, and so is the CAIP-2 `network` requirement. A non-`exact` entry may name its network with a bounded opaque identifier (`^[A-Za-z0-9:._/-]{1,64}$`) — the shape a real third-party 402 uses, e.g. ProofLines' `"monad-testnet"` plus `chainId` — while an `exact` entry still requires CAIP-2. `/mdf.json` continues to require CAIP-2 for every rail, and the alias normalisation in the one-to-one rule is 402-side only. `amount` stays an atomic integer string in both documents.
+- **CONCEPT.md: the one-to-one rule compares `(scheme, network, asset, amount)`** on a normalised network. A 402 SHOULD use CAIP-2; a consumer MAY normalise an alias to CAIP-2 from a `chainId` field on the entry or from a known alias table. The subtraction-only divergence clause is unchanged — no new exception is introduced.
+- **CONCEPT.md carries a short non-normative native-asset example**, and the Rails text now says a non-`exact` scheme defines its own asset identifier, carried in `/mdf.json` exactly as the 402 carries it.
+- **#67, examples:** the fabricated `0x1111…` asset in CONCEPT.md's `/mdf.json` snippet and in `mdf.schema.json`'s embedded examples is replaced with the canonical Base mainnet USDC contract (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`, "USD Coin" v2), from upstream `defaultAssets.ts` at `513dd66` — the same table #66 used for the example files.
+
+### Added — specification
+
+- `examples/mdf-native-asset-rail.json` — the faithful two-rail ProofLines draft (USDC `exact` plus `monad-native-exact`/`native` on testnet and mainnet), schema-valid from this version. It is the worked example of decision 26.
+
 ## [0.3.0] - 2026-11-08 — **BREAKING**
 
 The 402 becomes an x402 v2 `PaymentRequired`. There is no v1 acceptance window and no dual output: 0.3.0 is a hard cut. Validators SHOULD still read v1 on third-party sites, but an MDF 0.3.0 server neither emits nor accepts v1.

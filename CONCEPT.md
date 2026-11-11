@@ -137,25 +137,25 @@ Example `/mdf.json`:
   "pricing": {
     "default": {
       "rails": [
-        { "scheme": "exact", "network": "eip155:8453", "asset": "0x1111111111111111111111111111111111111111", "amount": "100" }
+        { "scheme": "exact", "network": "eip155:8453", "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "amount": "100" }
       ]
     },
     "sections": {
       "/docs/*": { "rails": [] },
       "/premium/*": {
         "rails": [
-          { "scheme": "exact", "network": "eip155:8453", "asset": "0x1111111111111111111111111111111111111111", "amount": "10000" }
+          { "scheme": "exact", "network": "eip155:8453", "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "amount": "10000" }
         ]
       },
       "/micropayment/*": {
         "rails": [
-          { "scheme": "exact", "network": "eip155:8453", "asset": "0x1111111111111111111111111111111111111111", "amount": "1000" },
+          { "scheme": "exact", "network": "eip155:8453", "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "amount": "1000" },
           { "scheme": "exact", "network": "lnbtc:000000000019d6689c085ae165831e93", "asset": "BTC", "amount": "1000" }
         ]
       },
       "/private/*": {
         "rails": [
-          { "scheme": "exact", "network": "eip155:8453", "asset": "0x1111111111111111111111111111111111111111", "amount": "100000000" }
+          { "scheme": "exact", "network": "eip155:8453", "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "amount": "100000000" }
         ],
         "access": "token"
       }
@@ -184,7 +184,7 @@ Each entry also carries `access`, either `per_fetch` (the default) or `token`. `
 
 **There is no exchange rate anywhere in this specification.** Each rail's price is set by the publisher in that rail's own units. `"1000"` micro-USDC and `"1000"` millisatoshis are two independent prices that happen to be written with the same digits, not one price converted. A server MUST NOT derive one rail's price from another, and a consumer MUST NOT treat one rail's price as a conversion of another's at any rate.
 
-**The 402 must agree with the declaration.** The `accepts[]` entries a server emits for a resource MUST correspond one-to-one to the `rails` that `/mdf.json` declares for that resource's path, with identical `scheme`, `network`, `asset` and `amount`. The one permitted divergence is subtraction: a rail that is currently degraded or unavailable is omitted from `accepts[]` (see Rails, above) and appears only in the declaration. A server MUST NOT invent an `accepts[]` entry that no declared rail backs, and MUST NOT substitute a different amount or asset.
+**The 402 must agree with the declaration.** The `accepts[]` entries a server emits for a resource MUST correspond one-to-one to the `rails` that `/mdf.json` declares for that resource's path, compared on `(scheme, network, asset, amount)`. Networks are compared in normalised form: a 402 SHOULD state its network as a CAIP-2 identifier, and where it does not, a consumer MAY normalise an alias to CAIP-2 — from a `chainId` field on the entry, or from a known alias table of its own — before comparing. `/mdf.json` always uses CAIP-2; the alias-and-`chainId` normalisation applies only when reading a 402. The one permitted divergence is subtraction: a rail that is currently degraded or unavailable is omitted from `accepts[]` (see Rails, above) and appears only in the declaration. A server MUST NOT invent an `accepts[]` entry that no declared rail backs, and MUST NOT substitute a different amount or asset.
 
 There is no site-level payment object and no site-level wallet. 0.2.x's `payment.accepted_networks` and `payment.accepted_currencies` are gone because they are the union of `pricing.rails`, and `payment.wallet` is gone because a single static address is redundant with — and could contradict — the live offer: the authoritative recipient is `accepts[].payTo` in the 402, per rail. A client that wants the site's capability takes the union of the rails it declares. 0.2.x's `payment.endpoint` folded into `auth.endpoint`, because the only flow that ever needed a separate endpoint was credential issuance; an x402 payment is presented on the resource URL itself, so a site priced entirely per fetch needs no `payment` or `auth` block at all.
 
@@ -226,7 +226,7 @@ This model has several useful properties:
 
 ### Payment Rails
 
-MDF carries every rail as an x402 v2 payment requirement. One protocol, one set of wire rules, with the settlement network as the variable. Two networks are defined in 0.3.0:
+MDF carries every rail as an x402 v2 payment requirement. One protocol, one set of wire rules, with the settlement network as the variable. MDF defines two networks:
 
 **USDC on an EVM chain** — x402's `exact` scheme on a CAIP-2 EVM network (`eip155:8453` Base mainnet, `eip155:84532` Base Sepolia), paying a stablecoin. Well-suited to agents operating in a crypto-native or DeFi context, and to site operators who already manage EVM wallets.
 
@@ -321,17 +321,27 @@ The MDF response fields with no x402 core equivalent — `savings`, `auth_endpoi
 
 #### Rails
 
-MDF 0.3.0 supports two settlement networks under one x402 protocol. A server offers one `accepts[]` entry per configured rail: `accepts[]` is where a multi-rail offer is expressed, and there is no separate multi-rail mechanism. The configured rails, and their prices, are declared in `/mdf.json` under `pricing.rails`, and the entries emitted here MUST correspond to them one-to-one — see Discovery, above.
+MDF defines two settlement networks under one x402 protocol. A server offers one `accepts[]` entry per configured rail: `accepts[]` is where a multi-rail offer is expressed, and there is no separate multi-rail mechanism. The configured rails, and their prices, are declared in `/mdf.json` under `pricing.rails`, and the entries emitted here MUST correspond to them one-to-one — see Discovery, above.
 
 **USDC on an EVM chain.** `scheme` MUST be `exact`; `network` MUST be an EVM CAIP-2 id — `eip155:8453` for Base mainnet or `eip155:84532` for Base Sepolia; `asset` MUST be the USDC contract address on that network; `amount` is in micro-USDC; `payTo` is the receiving EVM address; `extra` carries the scheme's EIP-712 domain data (`name`, `version`). Those two are properties of the token contract on that network, not MDF constants — USDC's EIP-712 name is `"USD Coin"` on Base mainnet and `"USDC"` on Base Sepolia — so a server MUST take them from a per-network asset table rather than hardcoding one. Verification and settlement follow `specs/schemes/exact/scheme_exact_evm.md` through any compliant facilitator's `/verify` and `/settle`.
 
 **Bitcoin over Lightning.** `scheme` MUST be `exact`; `network` MUST be one of the `lnbtc:` networks defined by the upstream lnbtc scheme (Bitcoin mainnet is `lnbtc:000000000019d6689c085ae165831e93` and is the one used in the examples); `asset` MUST be `"BTC"`; `amount` is in millisatoshis; `payTo` is the receiving node's compressed secp256k1 public key; `extra` carries the invoice and the request binding. Invoice construction and validation, the description-hash binding, the preimage proof, single-use settlement and the durable replay store are defined by `specs/schemes/exact/scheme_exact_lnbtc.md`, and are referenced here rather than restated. MDF does not define its own Lightning replay rules: the scheme's `network:payment_hash` consumption key is the rule. MDF names no Lightning testnet of its own; a server using one takes the identifier from the scheme spec.
 
+**A non-`exact` scheme defines its own asset identifier.** `scheme` is named per rail, and `exact` is the only scheme MDF defines — but it is not the only scheme a publisher may sell on. Where `scheme` is anything other than `exact`, the asset identifier is whatever that scheme's specification defines, and `asset` is an opaque, bounded string (`^[A-Za-z0-9:._/-]{1,128}$`): MDF does not interpret it, does not require a token contract address for it, and does not restrict the rail to a token on an eip155 network. `/mdf.json` carries that identifier exactly as the 402 does — the same string on the same rail — because the one-to-one rule compares it. `amount` is still an atomic integer in that rail's own units, and `network` is still a CAIP-2 identifier in `/mdf.json`. MDF defines no verification behaviour for such a rail, and a consumer that does not implement the scheme skips the entry rather than failing the offer.
+
+*Non-normative example.* A native-asset rail: the publisher's scheme `monad-native-exact` verifies a transfer of the chain's own gas token to the receiving address, so the rail needs no token contract and no facilitator. The `/mdf.json` rail is exactly the string the 402 uses as its asset identifier:
+
+```json
+{ "scheme": "monad-native-exact", "network": "eip155:10143", "asset": "native", "amount": "3000000000000000" }
+```
+
+The 402's `accepts[]` entry carries the same `scheme`, `asset` and `amount`, and the same network as a CAIP-2 identifier (SHOULD). A publisher whose own documents name the network by an alias may add a `chainId` field to the entry instead; a consumer normalises that before comparing — see Discovery.
+
 **A degraded rail is omitted; it does not fail the offer.** Rails fail independently. Where one rail cannot currently produce a payable requirement — the Lightning backend is unreachable, the facilitator does not support the configured EVM network, an invoice cannot be minted — the server MUST omit that rail's entry and MUST still emit the others. It MUST NOT emit a requirement it cannot fulfil, and it MUST NOT substitute a placeholder or a stale invoice. A consumer sees the reduced `accepts[]` and selects from it. If no rail can be offered, the response is an error with `Retry-After`, not a 402.
 
 **Rails do not borrow each other's identity.** Each entry is self-contained: its own `payTo`, its own `amount`, its own `extra`. A consumer MUST NOT infer one entry's terms from another.
 
-An `accepts[]` entry on a network or scheme this specification does not define is outside MDF 0.3.0. A consumer SHOULD skip an entry it does not recognise and use one it does, rather than failing the whole offer.
+An `accepts[]` entry on a network or scheme this specification does not define has no defined meaning in MDF: the rail is legal, but MDF does not say what its asset identifier denotes or how payment on it is verified. A consumer SHOULD skip an entry it does not recognise and use one it does, rather than failing the whole offer.
 
 #### Paid Responses
 

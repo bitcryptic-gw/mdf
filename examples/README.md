@@ -1,6 +1,6 @@
 # 402, paid-response and `/mdf.json` examples
 
-Complete, schema-valid examples for MDF 0.3.0. Each one is written against
+Complete, schema-valid examples for MDF 0.3.1. Each one is written against
 x402 v2 at `x402-foundation/x402` commit `513dd66d2b3eb2388065f9923d81aa496e626082`
 (2026-11-06).
 
@@ -20,6 +20,7 @@ x402 v2 at `x402-foundation/x402` commit `513dd66d2b3eb2388065f9923d81aa496e6260
 | `402-dual-rail-usdc-lightning.json` | A dual-rail 402: USDC on Base mainnet plus BTC over Lightning (`exact` on `lnbtc:000000000019d6689c085ae165831e93`). Carries `expires_at`. |
 | `mdf-dual-rail.json` | The `/mdf.json` for the same site. Its `/micropayment/*` price entry declares exactly the two rails the dual-rail 402 offers, at the same amounts on the same networks. Priced entirely `per_fetch`, so it has **no** `payment` or `auth` block. |
 | `mdf-token-tier.json` | A `/mdf.json` with a token-access section: `/private/**` carries `"access": "token"` and the document declares `auth.endpoint`. |
+| `mdf-native-asset-rail.json` | The faithful two-rail ProofLines draft: USDC `exact` plus a native-MON rail under the publisher's own scheme `monad-native-exact`, with `asset: "native"`. From 0.3.1 a non-`exact` scheme defines its own asset identifier; `/mdf.json` carries exactly the string the 402 carries. |
 | `200-paid-usdc-base-mainnet.json` | The decoded `PAYMENT-RESPONSE` header of a paid 200 on the EVM rail (an x402 v2 `SettlementResponse`). |
 | `200-paid-lnbtc.json` | The decoded `PAYMENT-RESPONSE` header of a paid 200 on the Lightning rail. `payer` is absent, as the lnbtc scheme requires. |
 
@@ -91,8 +92,8 @@ const v402 = ajv.compile(JSON.parse(readFileSync(`${root}/mdf-402.schema.json`, 
 const vmdf = ajv.compile(JSON.parse(readFileSync(`${root}/mdf.schema.json`, "utf8")));
 const read = (p) => JSON.parse(readFileSync(`${root}/${p}`, "utf8"));
 const ok = (c, l) => console.log((c ? "PASS  " : "FAIL  ") + l);
-const USDC = { scheme: "exact", network: "eip155:8453", asset: "0x1111111111111111111111111111111111111111", amount: "100" };
-const site = (extra) => ({ mdf_version: "0.3.0", site: "https://example.com", pricing: { default: { rails: [USDC] } }, ...extra });
+const USDC = { scheme: "exact", network: "eip155:8453", asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", amount: "100" };
+const site = (extra) => ({ mdf_version: "0.3.1", site: "https://example.com", pricing: { default: { rails: [USDC] } }, ...extra });
 
 for (const f of ["402-usdc-base-mainnet.json", "402-dual-rail-usdc-lightning.json"]) {
   const d = read(`examples/${f}`);
@@ -108,6 +109,7 @@ ok(v402(read("examples/402-usdc-base-mainnet.json")), "control: 402 without expi
 
 ok(vmdf(read("examples/mdf-dual-rail.json")), "mdf-dual-rail.json (per_fetch only, no payment/auth)");
 ok(vmdf(read("examples/mdf-token-tier.json")), "mdf-token-tier.json (token section + auth.endpoint)");
+ok(vmdf(read("examples/mdf-native-asset-rail.json")), "mdf-native-asset-rail.json (non-exact scheme, native asset)");
 for (const ex of JSON.parse(readFileSync(`${root}/mdf.schema.json`, "utf8")).examples) ok(vmdf(ex), "mdf.schema.json own example");
 ok(vmdf(site({})), "control: priced per_fetch site, no payment/auth block");
 ok(vmdf(site({ auth: { endpoint: "https://example.com/mdf/auth" }, pricing: { default: { rails: [USDC], access: "token" } } })), "control: token default + auth.endpoint");
@@ -124,10 +126,21 @@ ok(!vmdf(site({ payment: { accepted_networks: ["eip155:8453"] } })), "rejected: 
 ok(!vmdf(site({ payment: { accepted_currencies: ["USDC"] } })), "rejected: leftover accepted_currencies");
 ok(!vmdf(site({ payment: { wallet: "0x3333333333333333333333333333333333333333" } })), "rejected: leftover wallet");
 ok(!vmdf(site({ payment: { endpoint: "https://example.com/mdf/pay" } })), "rejected: leftover payment object");
+ok(!vmdf(site({ pricing: { default: { rails: [{ scheme: "exact", network: "eip155:8453", asset: "native", amount: "1" }] } } })), "rejected: exact with a non-0x asset on eip155");
+ok(!vmdf(site({ pricing: { default: { rails: [{ scheme: "monad-native-exact", network: "eip155:10143", asset: "a".repeat(129), amount: "1" }] } } })), "rejected: non-exact asset longer than 128 characters");
+ok(!vmdf(site({ pricing: { default: { rails: [{ scheme: "monad-native-exact", network: "eip155:10143", asset: "na tive", amount: "1" }] } } })), "rejected: non-exact asset containing a space");
+ok(!vmdf(site({ pricing: { default: { rails: [{ scheme: "monad-native-exact", network: "monad-testnet", asset: "native", amount: "1" }] } } })), "rejected: non-CAIP-2 network in mdf.json");
+const dual = read("examples/402-dual-rail-usdc-lightning.json");
+const aliased = structuredClone(dual);
+aliased.accepts[0] = { ...aliased.accepts[0], scheme: "monad-native-exact", network: "monad-testnet", asset: "native", extra: { chainId: 10143 } };
+ok(v402(aliased), "control (402): non-exact entry with an alias network plus chainId");
+const nonCaip2 = structuredClone(dual);
+nonCaip2.accepts[0].network = "monad-testnet";
+ok(!v402(nonCaip2), "rejected (402): exact entry with a non-CAIP-2 network");
 '
 ```
 
-Recorded output (2026-11-08, revision 2):
+Recorded output (2026-11-11, spec 0.3.1):
 
 ```text
 PASS  402-usdc-base-mainnet.json mdf-402
@@ -140,6 +153,7 @@ PASS  control: extra extension key alongside mdf
 PASS  control: 402 without expires_at
 PASS  mdf-dual-rail.json (per_fetch only, no payment/auth)
 PASS  mdf-token-tier.json (token section + auth.endpoint)
+PASS  mdf-native-asset-rail.json (non-exact scheme, native asset)
 PASS  mdf.schema.json own example
 PASS  control: priced per_fetch site, no payment/auth block
 PASS  control: token default + auth.endpoint
@@ -152,6 +166,12 @@ PASS  rejected: leftover accepted_networks
 PASS  rejected: leftover accepted_currencies
 PASS  rejected: leftover wallet
 PASS  rejected: leftover payment object
+PASS  rejected: exact with a non-0x asset on eip155
+PASS  rejected: non-exact asset longer than 128 characters
+PASS  rejected: non-exact asset containing a space
+PASS  rejected: non-CAIP-2 network in mdf.json
+PASS  control (402): non-exact entry with an alias network plus chainId
+PASS  rejected (402): exact entry with a non-CAIP-2 network
 ```
 
 A longer run of the same harness adds the earlier controls (0.2 price entry,
@@ -166,8 +186,10 @@ format plugin from the npx sandbox, so the script above is the procedure.
 All rejected by `mdf-402.schema.json`: a v1 `payment` envelope with a string
 `resource`; `x402Version: 1`; a chain-name `network` (`base`); a decimal
 `amount`; an `lnbtc` entry with `asset: "USDC"`; an `lnbtc` entry missing
-`extra.paymentFlow`; a missing `extensions.mdf`; an empty `accepts`; and a
-top-level `source_bytes`.
+`extra.paymentFlow`; a missing `extensions.mdf`; an empty `accepts`; a
+top-level `source_bytes`; and, from 0.3.1, an `exact` entry with a non-CAIP-2
+`network`. The matching positive control is a non-`exact` entry naming
+`"monad-testnet"` plus `chainId` — only `exact` requires CAIP-2 on the wire.
 
 ### `mdf.json` controls
 
@@ -182,6 +204,13 @@ Negative: a `token` section without `auth.endpoint`; a `token` section whose
 `payment.accepted_currencies`, `payment.wallet` or `payment` itself; a 0.2
 price entry (`amount`/`currency`/`chain`); the old `accepted_chains` key; a
 chain name as a rail network; a zero-priced rail; a decimal rail amount.
+
+Negative from 0.3.1 (the loosening is scoped to non-`exact` schemes, so each of
+these must still reject): `exact` with a non-0x asset on `eip155`; a non-`exact`
+asset longer than 128 characters; a non-`exact` asset containing a space; a
+non-CAIP-2 network in `/mdf.json`; and an `exact` 402 entry with a non-CAIP-2
+network. The `exact` rule is unchanged — the new opaque-string branches are
+reachable only when `scheme` is something else.
 
 ### Paid-response examples
 

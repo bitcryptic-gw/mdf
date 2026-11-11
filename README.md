@@ -2,7 +2,7 @@
 
 > A proposal for a web content architecture where markdown is the source of truth, agents are first-class citizens, and access policy is expressed through price.
 
-**Status:** Draft (v0.3.0) · Seeking community feedback  
+**Status:** Draft (v0.3.1) · Seeking community feedback  
 **Payment layer:** x402 v2, with USDC on EVM chains and BTC over Lightning as its two settlement networks. 0.3.0 is a breaking change from 0.2.x — see [CHANGELOG.md](./CHANGELOG.md#migrating-from-02x).  
 **Authors:** Gary Walker / [BitCryptic™](https://bitcryptic.com) · Graham Hall / [Slepner](https://slepner.com.au)
 
