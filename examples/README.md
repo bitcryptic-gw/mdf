@@ -130,6 +130,13 @@ ok(!vmdf(site({ pricing: { default: { rails: [{ scheme: "exact", network: "eip15
 ok(!vmdf(site({ pricing: { default: { rails: [{ scheme: "monad-native-exact", network: "eip155:10143", asset: "a".repeat(129), amount: "1" }] } } })), "rejected: non-exact asset longer than 128 characters");
 ok(!vmdf(site({ pricing: { default: { rails: [{ scheme: "monad-native-exact", network: "eip155:10143", asset: "na tive", amount: "1" }] } } })), "rejected: non-exact asset containing a space");
 ok(!vmdf(site({ pricing: { default: { rails: [{ scheme: "monad-native-exact", network: "monad-testnet", asset: "native", amount: "1" }] } } })), "rejected: non-CAIP-2 network in mdf.json");
+const dual = read("examples/402-dual-rail-usdc-lightning.json");
+const aliased = structuredClone(dual);
+aliased.accepts[0] = { ...aliased.accepts[0], scheme: "monad-native-exact", network: "monad-testnet", asset: "native", extra: { chainId: 10143 } };
+ok(v402(aliased), "control (402): non-exact entry with an alias network plus chainId");
+const nonCaip2 = structuredClone(dual);
+nonCaip2.accepts[0].network = "monad-testnet";
+ok(!v402(nonCaip2), "rejected (402): exact entry with a non-CAIP-2 network");
 '
 ```
 
@@ -163,6 +170,8 @@ PASS  rejected: exact with a non-0x asset on eip155
 PASS  rejected: non-exact asset longer than 128 characters
 PASS  rejected: non-exact asset containing a space
 PASS  rejected: non-CAIP-2 network in mdf.json
+PASS  control (402): non-exact entry with an alias network plus chainId
+PASS  rejected (402): exact entry with a non-CAIP-2 network
 ```
 
 A longer run of the same harness adds the earlier controls (0.2 price entry,
@@ -177,8 +186,10 @@ format plugin from the npx sandbox, so the script above is the procedure.
 All rejected by `mdf-402.schema.json`: a v1 `payment` envelope with a string
 `resource`; `x402Version: 1`; a chain-name `network` (`base`); a decimal
 `amount`; an `lnbtc` entry with `asset: "USDC"`; an `lnbtc` entry missing
-`extra.paymentFlow`; a missing `extensions.mdf`; an empty `accepts`; and a
-top-level `source_bytes`.
+`extra.paymentFlow`; a missing `extensions.mdf`; an empty `accepts`; a
+top-level `source_bytes`; and, from 0.3.1, an `exact` entry with a non-CAIP-2
+`network`. The matching positive control is a non-`exact` entry naming
+`"monad-testnet"` plus `chainId` — only `exact` requires CAIP-2 on the wire.
 
 ### `mdf.json` controls
 
@@ -197,8 +208,9 @@ chain name as a rail network; a zero-priced rail; a decimal rail amount.
 Negative from 0.3.1 (the loosening is scoped to non-`exact` schemes, so each of
 these must still reject): `exact` with a non-0x asset on `eip155`; a non-`exact`
 asset longer than 128 characters; a non-`exact` asset containing a space; a
-non-CAIP-2 network in `/mdf.json`. The `exact` rule is unchanged — the new
-opaque-string branch is reachable only when `scheme` is something else.
+non-CAIP-2 network in `/mdf.json`; and an `exact` 402 entry with a non-CAIP-2
+network. The `exact` rule is unchanged — the new opaque-string branches are
+reachable only when `scheme` is something else.
 
 ### Paid-response examples
 
